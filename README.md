@@ -1,5 +1,3 @@
-# OpenGroundINTEL
-
 **Condition-Based Intelligence for Global Infrastructure**
 
 OpenGroundINTEL is an applied research initiative focused on detecting, analyzing, and quantifying real-world infrastructure disruptions using satellite imagery, mobility data, and network science.
