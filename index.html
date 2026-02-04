@@ -11,7 +11,7 @@
 
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>OpenResearchAgent — Sustainable Research Code Intelligence</title>
+    <title>OPENGROUNDINTEL — Independent Research</title>
 
     <style>
         body {
@@ -23,22 +23,62 @@
             padding: 40px 20px;
             background-color: #f9f9f9;
         }
-        h1 { color: #1a73e8; border-bottom: 2px solid #1a73e8; padding-bottom: 10px; }
-        h2 { color: #202124; margin-top: 30px; }
+        h1 { 
+            color: #1a73e8; 
+            border-bottom: 2px solid #1a73e8; 
+            padding-bottom: 10px;
+            font-size: 2.2em;
+        }
+        h2 { 
+            color: #202124; 
+            margin-top: 35px;
+            font-size: 1.5em;
+        }
+        h3 {
+            color: #5f6368;
+            margin-top: 20px;
+            font-size: 1.1em;
+        }
         .card {
             background: white;
-            padding: 22px;
+            padding: 25px;
             border-radius: 8px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
             margin-bottom: 22px;
         }
-        .mission {
-            font-style: italic;
+        .intro {
+            font-size: 1.15em;
             color: #5f6368;
-            font-size: 1.05em;
+            line-height: 1.7;
         }
-        ul { padding-left: 20px; }
-        li { margin-bottom: 8px; }
+        .focus-areas {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        .focus-item {
+            background: #eef3fd;
+            padding: 15px;
+            border-radius: 6px;
+            border-left: 3px solid #1a73e8;
+        }
+        .project-item {
+            background: #f8f9fa;
+            padding: 15px 20px;
+            margin: 10px 0;
+            border-radius: 6px;
+            border-left: 3px solid #5f6368;
+        }
+        .project-item h3 {
+            margin-top: 0;
+            color: #202124;
+        }
+        .project-item p {
+            margin: 5px 0;
+            color: #5f6368;
+            font-size: 0.95em;
+        }
         .meta {
             background: #eef3fd;
             padding: 14px;
@@ -47,6 +87,11 @@
         }
         .links a {
             margin-right: 15px;
+            color: #1a73e8;
+            text-decoration: none;
+        }
+        .links a:hover {
+            text-decoration: underline;
         }
     </style>
 </head>
@@ -54,92 +99,81 @@
 <body>
 
 <header>
-    <h1>OpenResearchAgent</h1>
-    <p><strong>Design Proposal for Sustainable Research Code Management</strong></p>
+    <h1>OPENGROUNDINTEL</h1>
+    <p><strong>Independent Research on Systems, Risk & Intelligence</strong></p>
 </header>
 
 <section class="meta">
-    <p>
-        <strong>DOI:</strong>
-        <a href="https://doi.org/10.5281/zenodo.XXXXXXX">10.5281/zenodo.XXXXXXX</a>
-    </p>
     <div class="links">
-        <a href="https://github.com/signalgap9-del/OpenResearchAgent">GitHub Repository</a>
+        <a href="https://github.com/signalgap9-del/OpenResearchAgent">GitHub</a>
         <a href="https://x.com/GapSigOfficial">X / Twitter</a>
-        <a href="https://signalgap9-del.github.io/">Author Profile</a>
+        <a href="https://signalgap9-del.github.io/">Profile</a>
     </div>
 </section>
 
 <main>
 
     <section class="card">
-        <p class="mission">
-            “Most AI systems can generate research code once.
-            This project explores how AI agents can maintain, reason over,
-            and evolve research codebases over months — without losing intent.”
+        <p class="intro">
+            We are an independent research initiative exploring complex systems, 
+            operational intelligence, and decision-making under uncertainty. 
+            Our work spans supply chain dynamics, maritime systems, risk analysis, 
+            and the application of large language models to real-world problems.
         </p>
     </section>
 
     <section>
-        <h2>🔍 Problem Analysis</h2>
-        <p>
-            Recent paper-to-code systems (e.g., DeepCode) demonstrate strong initial
-            replication performance but suffer from fundamental limitations when applied
-            to long-horizon research projects.
-        </p>
-        <ul>
-            <li>Text-based code memory causes irreversible information loss</li>
-            <li>No structural tracking of cross-file dependencies</li>
-            <li>Static blueprints fail under iterative experimentation</li>
-        </ul>
+        <h2>Research Interests</h2>
+        <div class="focus-areas">
+            <div class="focus-item">
+                <strong>Supply Chain Intelligence</strong>
+            </div>
+            <div class="focus-item">
+                <strong>Maritime & Shipping Systems</strong>
+            </div>
+            <div class="focus-item">
+                <strong>Risk Management</strong>
+            </div>
+            <div class="focus-item">
+                <strong>LLM Applications</strong>
+            </div>
+        </div>
     </section>
 
     <section class="card">
-        <h2>🧠 Proposed Solution</h2>
-        <p>
-            This project proposes a closed-loop research agent architecture that integrates:
-        </p>
-        <ul>
-            <li><strong>DeepCode</strong> — initial paper-to-code generation</li>
-            <li><strong>RPG-Encoder</strong> — structured extraction of code intent and dependencies</li>
-            <li><strong>Persistent Agent Loop</strong> — long-term maintenance and reasoning</li>
-        </ul>
-        <p>
-            The core representation, the <em>Repository Planning Graph (RPG)</em>,
-            preserves both semantic intent and execution structure without lossy compression.
-        </p>
+        <h2>Selected Projects</h2>
+        
+        <div class="project-item">
+            <h3>OpenResearchAgent</h3>
+            <p>AI agent architecture for sustainable research code management and long-horizon reasoning</p>
+        </div>
+
+        <div class="project-item">
+            <h3>Supply Chain Risk Mapping</h3>
+            <p>Analysis frameworks for identifying vulnerabilities in global logistics networks</p>
+        </div>
+
+        <div class="project-item">
+            <h3>Maritime Data Intelligence</h3>
+            <p>Tools for processing and analyzing shipping patterns and port operations</p>
+        </div>
+
     </section>
 
     <section>
-        <h2>⚙️ Research Focus Areas</h2>
-        <ul>
-            <li>AI-assisted research automation</li>
-            <li>Long-horizon code intelligence</li>
-            <li>System-level reasoning and dependency tracking</li>
-            <li>Transportable research infrastructure (not domain-specific)</li>
-            <li>Decision-support systems for evolving technical artifacts</li>
-        </ul>
-    </section>
-
-    <section class="card">
-        <h2>📄 Research Status</h2>
+        <h2>Approach</h2>
         <p>
-            This release is a <strong>research design proposal and prototype</strong>.
-            It is not a production system and is intended to support discussion,
-            experimentation, and future empirical validation.
+            We believe in open research, transparent methodologies, and building 
+            practical tools that bridge academic rigor with operational reality. 
+            Our work prioritizes systems-level thinking and empirical validation.
         </p>
-        <ul>
-            <li>Status: Research Preview (v0.1)</li>
-            <li>Scope: Research systems & intelligence</li>
-            <li>Audience: AI researchers, system designers</li>
-        </ul>
     </section>
 
 </main>
 
 <footer>
     <p style="text-align:center; color:#999; font-size:0.8em; margin-top:50px;">
-        © 2026 OpenResearchAgent — Open Research Infrastructure
+        © 2026 OPENGROUNDINTEL — Independent Research
     </p>
 </footer>
 
