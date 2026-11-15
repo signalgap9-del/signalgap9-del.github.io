@@ -1,228 +1,107 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-847DVBLJTY"></script>
-    <script>
-      window.dataLayer = window.dataLayer || [];
-      function gtag(){dataLayer.push(arguments);}
-      gtag('js', new Date());
-      gtag('config', 'G-847DVBLJTY');
-    </script>
-
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>OPENGROUNDINTEL — Independent Research</title>
-
-    <style>
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            line-height: 1.6;
-            color: #333;
-            max-width: 860px;
-            margin: 0 auto;
-            padding: 40px 20px;
-            background-color: #f9f9f9;
-        }
-        h1 { 
-            color: #1a73e8; 
-            border-bottom: 2px solid #1a73e8; 
-            padding-bottom: 10px;
-            font-size: 2.2em;
-        }
-        h2 { 
-            color: #202124; 
-            margin-top: 35px;
-            font-size: 1.5em;
-        }
-        h3 {
-            color: #5f6368;
-            margin-top: 20px;
-            font-size: 1.1em;
-        }
-        .card {
-            background: white;
-            padding: 25px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            margin-bottom: 22px;
-        }
-        .intro {
-            font-size: 1.15em;
-            color: #5f6368;
-            line-height: 1.7;
-        }
-        .focus-areas {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 15px;
-            margin: 20px 0;
-        }
-        .focus-item {
-            background: #eef3fd;
-            padding: 15px;
-            border-radius: 6px;
-            border-left: 3px solid #1a73e8;
-        }
-        .project-item {
-            background: #f8f9fa;
-            padding: 15px 20px;
-            margin: 10px 0;
-            border-radius: 6px;
-            border-left: 3px solid #5f6368;
-        }
-        .project-item h3 {
-            margin-top: 0;
-            color: #202124;
-        }
-        .project-item p {
-            margin: 5px 0;
-            color: #5f6368;
-            font-size: 0.95em;
-        }
-        .publication-item {
-            background: #f8f9fa;
-            padding: 15px 20px;
-            margin: 15px 0;
-            border-radius: 6px;
-            border-left: 3px solid #1a73e8;
-        }
-        .publication-item h3 {
-            margin-top: 0;
-            color: #202124;
-            font-size: 1.1em;
-        }
-        .publication-item p {
-            margin: 8px 0;
-            color: #5f6368;
-            font-size: 0.95em;
-        }
-        .pub-meta {
-            color: #888;
-            font-size: 0.9em;
-            font-style: italic;
-        }
-        .pub-meta a {
-            color: #1a73e8;
-            text-decoration: none;
-        }
-        .pub-meta a:hover {
-            text-decoration: underline;
-        }
-        .meta {
-            background: #eef3fd;
-            padding: 14px;
-            border-radius: 6px;
-            font-size: 0.95em;
-        }
-        .links a {
-            margin-right: 15px;
-            color: #1a73e8;
-            text-decoration: none;
-        }
-        .links a:hover {
-            text-decoration: underline;
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Yunseop Im — Software Engineer | Georgia Tech MSCS | AI Systems, Backend, Frontend</title>
+<meta name="description" content="Yunseop Im — M.S. Computer Science, Georgia Tech. Software engineer building backend systems, AI agents, multimodal pipelines, GraphRAG, LLM serving, and full-stack products (TypeScript, React, Python, Node.js, FastAPI, PostgreSQL). Open to work.">
+<meta name="keywords" content="Yunseop Im, software engineer, Georgia Tech MSCS, backend engineer, frontend engineer, AI engineer, LLM, GraphRAG, RAG, multimodal AI, AI agents, Python, TypeScript, React, Node.js, FastAPI, PostgreSQL, LLM serving, open to work">
+<meta property="og:title" content="Yunseop Im — Software Engineer">
+<meta property="og:description" content="M.S. Computer Science, Georgia Tech. Backend + frontend + applied AI systems.">
+<meta property="og:type" content="website">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+         line-height:1.65; color:#1a1a1a; max-width:820px; margin:0 auto; padding:56px 24px 80px;
+         background:#fafafa; }
+  h1 { font-size:2.4em; letter-spacing:-0.02em; }
+  .role { font-size:1.15em; color:#444; margin-top:6px; }
+  .edu { margin-top:10px; font-size:1em; color:#555; }
+  .edu b { color:#1a1a1a; }
+  .status { display:inline-block; margin-top:18px; padding:6px 14px; border-radius:20px;
+            background:#e8f5e9; color:#2e7d32; font-weight:600; font-size:0.9em; }
+  h2 { font-size:1.25em; margin:44px 0 14px; padding-bottom:8px; border-bottom:2px solid #e0e0e0; }
+  .grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+  .card { background:#fff; border:1px solid #e5e5e5; border-radius:10px; padding:18px 20px; }
+  .card h3 { font-size:1em; margin-bottom:6px; }
+  .card .stack { font-size:0.82em; color:#888; margin-bottom:8px; font-family:ui-monospace,monospace; }
+  .card p { font-size:0.92em; color:#444; }
+  .skills { display:flex; flex-wrap:wrap; gap:8px; }
+  .tag { background:#fff; border:1px solid #ddd; border-radius:6px; padding:4px 12px;
+         font-size:0.85em; color:#333; }
+  a { color:#1565c0; text-decoration:none; }
+  a:hover { text-decoration:underline; }
+  .links { margin-top:44px; font-size:0.95em; color:#555; }
+  footer { margin-top:60px; font-size:0.8em; color:#999; }
+  @media (max-width:640px){ .grid{grid-template-columns:1fr;} h1{font-size:1.9em;} }
+</style>
 </head>
-
 <body>
 
-<header>
-    <h1>OPENGROUNDINTEL</h1>
-    <p><strong>Independent Research on Systems, Risk & Intelligence</strong></p>
-</header>
+<h1>Yunseop Im</h1>
+<p class="role">Software Engineer — backend systems, AI agents &amp; multimodal pipelines, full-stack products.</p>
+<p class="edu"><b>Georgia Tech — M.S. Computer Science (MSCS)</b></p>
+<span class="status">● Open to work — remote / Netherlands</span>
 
-<section class="meta">
-    <div class="links">
-        <a href="https://github.com/signalgap9-del/OpenResearchAgent">GitHub</a>
-        <a href="https://x.com/GapSigOfficial">X / Twitter</a>
-        <a href="https://signalgap9-del.github.io/">Profile</a>
-    </div>
-</section>
+<h2>What I build</h2>
+<div class="grid">
+  <div class="card">
+    <h3>LivePair SaaS</h3>
+    <div class="stack">TypeScript · React · Node · Gemini/OpenAI APIs</div>
+    <p>Multi-tenant AI interview platform — real-time audio/video analysis, per-user knowledge stores (RAG), sales-assist agents.</p>
+  </div>
+  <div class="card">
+    <h3>AI agents &amp; multimodal pipelines</h3>
+    <div class="stack">Python · LLM APIs · embeddings · GPU</div>
+    <p>Agent orchestration, multimodal inference, GraphRAG/RAG retrieval, on-prem model serving.</p>
+  </div>
+  <div class="card">
+    <h3>Engineering-data / PLM system</h3>
+    <div class="stack">Python · PostgreSQL/SQLite · STEP · BRL-CAD</div>
+    <p>Product-structure modeling, BOM traversal, change workflows, geometry validation — verified on real CAD datasets.</p>
+  </div>
+  <div class="card">
+    <h3>Interview &amp; job tooling</h3>
+    <div class="stack">Python · FastAPI · web UIs</div>
+    <p>Interview-prep automation, application pipelines, LinkedIn automation tooling.</p>
+  </div>
+  <div class="card">
+    <h3>Freight / logistics analytics</h3>
+    <div class="stack">Python · data pipelines</div>
+    <p>Maritime freight &amp; supply-chain analysis tools and dashboards.</p>
+  </div>
+  <div class="card">
+    <h3>Full-stack products</h3>
+    <div class="stack">React · TypeScript · Node.js · REST · WebSockets</div>
+    <p>Multi-tenant SaaS surfaces, auth, payments-adjacent flows, observability.</p>
+  </div>
+</div>
 
-<main>
+<h2>Stack</h2>
+<div class="skills">
+  <span class="tag">Python</span><span class="tag">TypeScript</span><span class="tag">JavaScript</span>
+  <span class="tag">SQL</span><span class="tag">React</span><span class="tag">Node.js</span>
+  <span class="tag">FastAPI</span><span class="tag">PostgreSQL</span><span class="tag">SQLite</span>
+  <span class="tag">LLM APIs</span><span class="tag">AI agents</span><span class="tag">multimodal AI</span>
+  <span class="tag">RAG / GraphRAG</span><span class="tag">embeddings</span><span class="tag">Docker</span>
+  <span class="tag">Linux</span><span class="tag">CI/CD</span><span class="tag">on-prem GPU serving</span>
+  <span class="tag">STEP / CAD interop</span><span class="tag">ontology / graph DB</span>
+</div>
 
-    <section class="card">
-        <p class="intro">
-            We are an independent research initiative exploring complex systems, 
-            operational intelligence, and decision-making under uncertainty. 
-            Our work spans supply chain dynamics, maritime systems, risk analysis, 
-            and the application of large language models to real-world problems.
-        </p>
-    </section>
+<h2>How I work</h2>
+<p style="color:#444; font-size:0.95em;">
+Ship working software, not demos — every claim in my docs comes from an executed run.
+I read real implementations before building, and I care about the boring parts:
+data modeling, migrations, auth, tenancy, observability.
+</p>
 
-    <section>
-        <h2>Research Interests</h2>
-        <div class="focus-areas">
-            <div class="focus-item">
-                <strong>Supply Chain Intelligence</strong>
-            </div>
-            <div class="focus-item">
-                <strong>Maritime & Shipping Systems</strong>
-            </div>
-            <div class="focus-item">
-                <strong>Risk Management</strong>
-            </div>
-            <div class="focus-item">
-                <strong>LLM Applications</strong>
-            </div>
-        </div>
-    </section>
+<p class="links">
+  <a href="https://github.com/signalgap9-del">GitHub</a> ·
+  <a href="https://www.linkedin.com/">LinkedIn</a> ·
+  <a href="mailto:hello@signalgap9-del.github.io">Email</a>
+</p>
 
-    <section class="card">
-        <h2>Publications & Research</h2>
-        
-        <div class="publication-item">
-            <h3>Comming soon</h3>
-            <p class="pub-meta">Journal/Conference Name • Year • <a href="#">DOI/Link</a></p>
-            <p>Brief description of the research and findings.</p>
-        </div>
-
-        <div class="publication-item">
-            <h3>Comming soon</h3>
-            <p class="pub-meta">Preprint/arXiv • 2025 • <a href="#">Link</a></p>
-            <p>Summary of the work and its contributions.</p>
-        </div>
-
-
-    </section>
-
-    <section class="card">
-        <h2>Selected Projects</h2>
-        
-        <div class="project-item">
-            <h3>OpenResearchAgent</h3>
-            <p>AI agent architecture for sustainable research code management and long-horizon reasoning</p>
-        </div>
-
-        <div class="project-item">
-            <h3>Supply Chain Risk Mapping</h3>
-            <p>Analysis frameworks for identifying vulnerabilities in global logistics networks</p>
-        </div>
-
-        <div class="project-item">
-            <h3>Maritime Data Intelligence</h3>
-            <p>Tools for processing and analyzing shipping patterns and port operations</p>
-        </div>
-
-    </section>
-
-    <section>
-        <h2>Approach</h2>
-        <p>
-            We believe in open research, transparent methodologies, and building 
-            practical tools that bridge academic rigor with operational reality. 
-            Our work prioritizes systems-level thinking and empirical validation.
-        </p>
-    </section>
-
-</main>
-
-<footer>
-    <p style="text-align:center; color:#999; font-size:0.8em; margin-top:50px;">
-        © 2026 OPENGROUNDINTEL — Independent Research
-    </p>
-</footer>
+<footer>© 2026 Yunseop Im — Georgia Tech MSCS</footer>
 
 </body>
 </html>
