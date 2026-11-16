@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Running Autonomous AI Agents Safely — devin-harness | Yunseop Im</title>
+<meta name="description" content="How I built devin-harness: exec guards, session ledgers, and typed review gates for running autonomous AI agents in production repos. By Yunseop Im, Georgia Tech MSCS.">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+         line-height:1.7; color:#1a1a1a; max-width:760px; margin:0 auto; padding:48px 24px 80px; background:#fafafa; }
+  h1 { font-size:1.9em; letter-spacing:-0.02em; line-height:1.25; }
+  .meta { color:#888; font-size:0.88em; margin:10px 0 30px; }
+  h2 { font-size:1.2em; margin:34px 0 10px; }
+  p, li { color:#333; font-size:0.95em; }
+  ul { padding-left:22px; }
+  code { background:#eee; padding:1px 6px; border-radius:4px; font-size:0.88em;
+         font-family:ui-monospace,Menlo,monospace; }
+  pre { background:#1e1e1e; color:#d4d4d4; padding:16px 18px; border-radius:8px;
+        overflow-x:auto; font-size:0.82em; margin:14px 0; }
+  pre code { background:none; padding:0; color:inherit; }
+  a { color:#1565c0; }
+  .back { display:inline-block; margin-bottom:26px; font-size:0.88em; color:#666; }
+  .cta { margin-top:36px; padding:18px 20px; background:#fff; border:1px solid #e0e0e0;
+         border-radius:10px; }
+</style>
+</head>
+<body>
+<a class="back" href="/">← yunseop.im</a>
+<h1>Running autonomous AI agents safely in a real repo</h1>
+<p class="meta">Yunseop Im · Georgia Tech MSCS · AI agents / LLM systems</p>
+
+<p>I run AI agents daily on a production multi-tenant SaaS. The hard part was never
+"can the agent write code" — it's <em>trusting it not to break things while nobody's
+watching</em>. This post is about the harness I built for that:
+<a href="https://github.com/signalgap9-del/devin-harness">devin-harness</a>.</p>
+
+<h2>The problem: agents fail silently, not loudly</h2>
+<p>Most agent failures aren't crashes. They're <strong>gray failures</strong>: a deploy
+that "succeeded" while a queue stopped draining, an edit that passed review but never
+ran a test, a session that quietly edited a secret file. A diff review catches none of
+these because the damage isn't in the diff — it's in what the agent <em>didn't</em> do.</p>
+
+<h2>What the harness actually does</h2>
+<ul>
+  <li><strong>Exec guard</strong> — a pre-tool hook that blocks dangerous shell commands
+  deterministically (regex, &lt;50ms, no model call). Cheap enough to run on every call.</li>
+  <li><strong>File guard</strong> — same idea for edits: blocks secret files, migration
+  edits, and runtime-state changes before they happen.</li>
+  <li><strong>Session ledger</strong> — every tool call appended to
+  <code>action-log.jsonl</code> (secrets redacted), so a reviewer can audit the whole
+  session, not just the final diff.</li>
+  <li><strong>Claim guard</strong> — if files changed but no test ran afterward, the
+  session ends with a loud "unverified" advisory instead of a green checkmark.</li>
+  <li><strong>Typed review gates</strong> — deterministic secret/suppression scan →
+  npm supply-chain audit → a typed LLM judgment over the diff with persistent state,
+  so resolved findings never re-block.</li>
+</ul>
+
+<h2>Why this matters beyond one repo</h2>
+<p>The pattern generalizes: <em>guardrails at the tool-call boundary &gt; prompts asking
+the agent to be careful</em>. A rule the agent can't bypass beats a rule it might
+ignore. Everything in the repo is MIT-licensed and drop-in:
+<code>node setup.mjs /path/to/your/repo</code>.</p>
+
+<div class="cta">
+  <strong>Repo:</strong> <a href="https://github.com/signalgap9-del/devin-harness">github.com/signalgap9-del/devin-harness</a><br>
+  <strong>More:</strong> <a href="/">profile &amp; projects</a> ·
+  <a href="https://www.linkedin.com/in/yunseop-i-207a7215a/">LinkedIn</a>
+</div>
+
+</body>
+</html>
