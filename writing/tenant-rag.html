@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Per-Tenant RAG Isolation in Multi-Tenant AI SaaS | Yunseop Im</title>
+<meta name="description" content="How to design tenant-isolated RAG for a multi-tenant AI SaaS: per-user vector stores vs shared store with metadata filters, quota math, GDPR deletion, and the failure modes that leak data across tenants.">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+         line-height:1.75; color:#1a1a1a; max-width:780px; margin:0 auto; padding:48px 24px 80px; background:#fafafa; }
+  h1 { font-size:2em; letter-spacing:-0.02em; line-height:1.25; }
+  h2 { font-size:1.25em; margin:40px 0 12px; }
+  .meta { color:#888; font-size:0.85em; margin:10px 0 26px; }
+  p, li { color:#333; font-size:0.95em; }
+  ul, ol { padding-left:24px; }
+  li { margin:6px 0; }
+  code { background:#eee; padding:1px 6px; border-radius:4px; font-size:0.88em; font-family:ui-monospace,Menlo,monospace; }
+  pre { background:#1e1e1e; color:#d4d4d4; padding:16px 18px; border-radius:8px; overflow-x:auto; font-size:0.8em; margin:14px 0; }
+  pre code { background:none; padding:0; color:inherit; }
+  a { color:#1565c0; }
+  .back { display:inline-block; margin-bottom:24px; font-size:0.88em; color:#666; }
+  .cta { margin-top:44px; padding:18px 22px; background:#fff; border:1px solid #e0e0e0; border-radius:10px; font-size:0.92em; }
+  table { border-collapse:collapse; width:100%; margin:14px 0; font-size:0.88em; }
+  th, td { border:1px solid #ddd; padding:7px 11px; text-align:left; }
+  th { background:#f0f0f0; }
+  blockquote { border-left:3px solid #ddd; padding:4px 0 4px 16px; color:#555; margin:14px 0; }
+</style>
+</head>
+<body>
+<a class="back" href="/">← yunseop.im</a>
+<h1>Per-tenant RAG isolation in multi-tenant AI SaaS</h1>
+<p class="meta">Yunseop Im · Software engineer, AI engineering · M.S. CS, Georgia Tech</p>
+
+<p>"Add RAG to your SaaS" is the easy part. The hard part nobody warns you about: in a
+multi-tenant product, <strong>retrieval is a security boundary</strong>. If tenant A's
+query can surface tenant B's documents, you don't have a search bug — you have a data
+breach with a latency SLA. This post is the design I use, in two phases, and the
+failure modes that decide which one you actually need.</p>
+
+<h2>The two architectures</h2>
+
+<p>Every managed vector/RAG service forces a choice. Both are legitimate; they fail in
+different places.</p>
+
+<table>
+<tr><th></th><th>Phase 1 — siloed stores</th><th>Phase 2 — shared store + metadata</th></tr>
+<tr><td>Layout</td><td>One store per tenant; <code>user_id → store_name</code> map in your datastore</td><td>One shared store; every doc tagged <code>customMetadata:{tenant_id}</code></td></tr>
+<tr><td>Retrieval call</td><td>Attach only that tenant's store per request</td><td>Always pass <code>metadata_filter</code> set <em>server-side</em></td></tr>
+<tr><td>Isolation strength</td><td>Physical — impossible to cross</td><td>Logical — depends on your filter never being bypassed</td></tr>
+<tr><td>Scaling ceiling</td><td>Provider project quotas (per-store limits, total project cap)</td><td>Index size, metadata-filter latency</td></tr>
+<tr><td>GDPR delete</td><td>Drop the whole store — clean</td><td>Delete by metadata — eventual consistency</td></tr>
+<tr><td>Best for</td><td>Up to a few thousand tenants</td><td>10k+ tenants, cost pressure</td></tr>
+</table>
+
+<h2>The rule that matters most</h2>
+
+<blockquote>
+Tenant scope is enforced in the <strong>request builder</strong>, never trusted from the
+client.
+</blockquote>
+
+<p>In the shared-store design, the single most dangerous line of code in your system is
+a <code>metadata_filter</code> assembled from a client-supplied parameter. One missing
+parameter and every tenant's documents are retrievable. The filter must be constructed
+server-side from the <em>authenticated</em> session — the client can narrow within their
+own scope, never widen it.</p>
+
+<h2>Quota math is a design input, not an afterthought</h2>
+
+<p>Managed RAG billing has non-obvious multipliers that determine your unit economics
+before you write a line of product code. The facts I plan around (verify against your
+provider's current docs — these change):</p>
+
+<ul>
+  <li>Store size is billed at roughly <strong>3× input bytes</strong> (input + embeddings + index overhead)</li>
+  <li>Indexing is charged per token; <strong>query-time embedding is free</strong>; retrieved chunks bill as normal input tokens on that turn</li>
+  <li>Provider projects have a <strong>project-wide total quota</strong> shared across all stores — per-tenant stores don't get per-tenant quota</li>
+  <li>Per-file size caps and per-store size caps constrain what "unlimited uploads" can mean</li>
+</ul>
+
+<p>Worked example: with a 40MB-per-user cap and a 1TB project quota, your ceiling is
+~8,000 full-cap tenants — not the 100k your marketing page hopes for. Per-user limits
+(doc count, file size, total bytes) are therefore <strong>the cost control</strong>, and
+they should differ by plan tier while isolation stays identical for everyone.</p>
+
+<h2>Failure modes I've seen (and designed against)</h2>
+
+<ol>
+  <li><strong>Unscoped attachment.</strong> A code path attaches "the knowledge store"
+  without scoping to the requesting user. Cross-tenant leak. Fix: the request builder
+  takes the authenticated user as a required argument — no default, no optional.</li>
+  <li><strong>Client-supplied filters.</strong> Frontend sends <code>?tenant_id=</code>.
+  Trivially exploitable. Fix: filter built from session, client params can only narrow.</li>
+  <li><strong>Stale index after delete.</strong> User deletes a document; the vector store
+  still serves it for hours. Fix: treat retrieval freshness as part of the delete
+  contract, not best-effort.</li>
+  <li><strong>Quota bypass via concurrency.</strong> Per-user limits checked at upload but
+  not at query time. Fix: enforce at both boundaries.</li>
+  <li><strong>Store proliferation.</strong> Phase-1 silo design hits the provider's
+  project-wide store cap at exactly the moment you're scaling. Fix: know your ceiling
+  <em>before</em> you need Phase 2, and keep the retrieval interface identical across
+  both so migration is a backend swap, not a rewrite.</li>
+</ol>
+
+<h2>The meta-lesson</h2>
+
+<p>Multi-tenant RAG is where "it works in the demo" goes to die. The demo has one user;
+production has adversarial neighbors. The design that survives is boring: scope enforced
+server-side, quotas as first-class limits, deletion as a contract, and a migration path
+between isolation architectures that doesn't change your API. Get those four right and
+the retrieval quality questions — chunking, reranking, hybrid search — are the fun part
+you actually get to spend time on.</p>
+
+<div class="cta">
+<strong>Related:</strong> <a href="/projects/graphrag-lab.html">graphrag-lab — retrieval experiments</a> ·
+<a href="/writing/agents.html">agent harness teardown</a> ·
+<a href="/">profile</a> ·
+<a href="https://www.linkedin.com/in/yunseop-i-207a7215a/">LinkedIn</a>
+</div>
+</body>
+</html>
