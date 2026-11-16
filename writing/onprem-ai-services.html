@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>On-Prem AI Is a Services Business — An Opinion | Yunseop Im</title>
+<meta name="description" content="Opinion: selling on-premise LLM deployments is not selling software — it's selling an operational relationship. Why most on-prem AI deals underprice the serving, quality-regression, and support burden, and what buyers should ask before signing.">
+<meta name="keywords" content="on-prem AI, self-hosted LLM, enterprise AI opinion, LLM deployment, AI infrastructure, vLLM, SGLang, enterprise software, AI services">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+         line-height:1.75; color:#1a1a1a; max-width:780px; margin:0 auto; padding:48px 24px 80px; background:#fafafa; }
+  h1 { font-size:2em; letter-spacing:-0.02em; line-height:1.25; }
+  h2 { font-size:1.3em; margin:44px 0 14px; letter-spacing:-0.01em; }
+  .meta { color:#888; font-size:0.85em; margin:10px 0 26px; }
+  p, li { color:#333; font-size:0.95em; }
+  ul, ol { padding-left:24px; }
+  li { margin:6px 0; }
+  code { background:#eee; padding:1px 6px; border-radius:4px; font-size:0.86em; font-family:ui-monospace,Menlo,monospace; }
+  a { color:#1565c0; }
+  .back { display:inline-block; margin-bottom:24px; font-size:0.88em; color:#666; }
+  .cta { margin-top:48px; padding:18px 22px; background:#fff; border:1px solid #e0e0e0; border-radius:10px; font-size:0.92em; }
+  blockquote { border-left:3px solid #ddd; padding:4px 0 4px 16px; color:#555; margin:14px 0; font-style:italic; }
+  .pull { font-size:1.15em; color:#1a1a1a; font-weight:600; margin:32px 0; padding-left:20px; border-left:4px solid #1565c0; }
+</style>
+</head>
+<body>
+<a class="back" href="/writing/">← Writing</a>
+<h1>On-prem AI is a services business</h1>
+<p class="meta">Yunseop Im · Opinion · 2026 · ~8 min read</p>
+
+<p>Every enterprise AI vendor now leads with the same pitch: "your data never
+leaves your building." On-premise LLM deployments are the hottest category in
+the market, and the sales decks all show the same architecture diagram — GPUs in
+a rack, a serving engine, an API, done.</p>
+
+<p>I've operated one of these deployments in production. I'm going to say the
+thing the decks don't: <strong>what you're buying isn't software. It's an
+operational relationship — and it's priced like neither.</strong></p>
+
+<h2>The demo hides the employment contract</h2>
+
+<p>A cloud API call has a clean boundary. You send a request, you get a response,
+the provider absorbs everything in between — uptime, model updates, capacity,
+failures at 3am. The contract is per-token and the responsibility is theirs.</p>
+
+<p>On-prem inverts every part of that. When inference runs on the customer's
+GPUs, "the provider absorbs failures" becomes "someone absorbs failures" — and
+that someone is whoever signed the support contract. The questions that decide
+whether the deployment lives or dies aren't in the sales demo:</p>
+
+<ul>
+  <li>When the GPU thermal-throttles during a batch job, who gets paged?</li>
+  <li>When the model produces a confidently wrong answer, who owns the quality
+  regression — and how would they even detect it?</li>
+  <li>When the customer wants a newer model, who runs the eval suite, signs off
+  on the quality delta, and manages the rollback?</li>
+  <li>When traffic doubles, who provisions GPUs on a six-week lead time?</li>
+</ul>
+
+<p>None of these are engineering questions. They're <em>service-desk</em>
+questions — and they exist for the entire life of the deployment, not the
+first sprint.</p>
+
+<h2>Why vendors underprice it</h2>
+
+<p>The incentive structure guarantees underpricing. An on-prem deal priced like
+a SaaS contract — license fee plus support hours — looks great on the vendor's
+P&amp;L until the first incident. The honest pricing model is closer to a
+managed service: deployment + continuous operations + model lifecycle
+management + quality assurance, priced as an annuity, not a license.</p>
+
+<p>Vendors resist this because it breaks the software narrative. "We sell you a
+box and leave" is a much easier sale than "we become part of your on-call
+rotation." But the deployments that succeed are the ones where both sides
+admitted what the contract actually is.</p>
+
+<h2>What buyers should ask before signing</h2>
+
+<p>If you're evaluating an on-prem AI deployment, the demo answers none of the
+questions that matter. Ask these instead:</p>
+
+<ol>
+  <li><strong>"Show me your incident history, anonymized."</strong> Not the
+  uptime SLA — the actual failure modes you've hit in production and how they
+  were resolved. A vendor who's operated this will have war stories. A vendor
+  who's only demoed it will deflect.</li>
+  <li><strong>"What does the quality-regression process look like on a model
+  update?"</strong> If the answer is "we'll retrain and redeploy," the vendor
+  doesn't understand that the model is frozen and every config change is a
+  release. You want golden-set evals, rollback criteria, and a named owner.</li>
+  <li><strong>"Who owns the pager after go-live?"</strong> Get it in the
+  contract. "Vendor supports it" with no named rotation, escalation path, or
+  response-time commitment is a wish, not a service.</li>
+  <li><strong>"What happens when our traffic doubles?"</strong> GPU capacity
+  isn't elastic. You need a pre-agreed answer — queue, degrade, or provision —
+  with lead times and cost ownership written down.</li>
+  <li><strong>"Show me a customer reference who ran this for a year."</strong>
+  Not a launch reference — a renewal reference. The churn conversations are
+  where the truth lives.</li>
+</ol>
+
+<h2>The reframe that makes it work</h2>
+
+<p>None of this means on-prem AI is a bad bet — for regulated data, IP-sensitive
+work, and air-gapped environments it's often the only option. The reframe is
+simpler: <strong>price and staff it as the service it is.</strong></p>
+
+<p>For vendors: build the operational muscle before the sales motion. The teams
+that win on-prem aren't the ones with the best model demos — they're the ones
+who can answer "who gets paged at 2am" without pausing.</p>
+
+<p>For buyers: the cheapest on-prem proposal is usually the most expensive one.
+The proposal that includes named operational ownership, quality gates, and
+capacity planning is the one that will still be running in year two.</p>
+
+<p class="pull">On-prem AI isn't a product you buy once. It's a service you
+employ forever. Price it, staff it, and contract it accordingly — or don't
+sign.</p>
+
+<p>The technical version of this argument — serving internals, quantization,
+guided decoding, prefix caching — is in
+<a href="/writing/onprem-llm.html">the on-prem serving field guide</a>. This
+post is about the part the field guide can't cover: the business model hiding
+inside the infrastructure.</p>
+
+<div class="cta">
+<strong>Related:</strong> <a href="/writing/onprem-llm.html">Running LLM inference on customer GPUs — field guide</a> ·
+<a href="/writing/">all writing</a> ·
+<a href="/">profile</a> ·
+<a href="https://www.linkedin.com/in/yunseop-i-207a7215a/">LinkedIn</a>
+</div>
+</body>
+</html>
