@@ -3,126 +3,255 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Yunseop Im — Full-Stack Software Engineer | AI Engineering | Georgia Tech MSCS</title>
-<meta name="description" content="Yunseop Im — software engineer since 2023, full-stack + AI engineering: AI agents, RAG/GraphRAG, multimodal pipelines, LLM serving. M.S. Computer Science, Georgia Tech. Open to work — Netherlands.">
-<meta name="keywords" content="Yunseop Im, software engineer, full-stack engineer, AI engineer, AI agents, RAG, GraphRAG, LLM, multimodal AI, Python, TypeScript, React, FastAPI, Node.js, PostgreSQL, Georgia Tech, M.S. Computer Science, open to work, Netherlands">
-<meta property="og:title" content="Yunseop Im — Full-Stack Software Engineer, AI Engineering">
-<meta property="og:description" content="AI agents, RAG/GraphRAG, multimodal pipelines, LLM serving. M.S. CS, Georgia Tech. Open to work — Netherlands.">
+<title>Yunseop Im — Software Engineer, AI Engineering</title>
+<meta name="description" content="Yunseop Im — full-stack software engineer with 3 years building production AI systems: agents, RAG/GraphRAG, multimodal pipelines, LLM infrastructure. M.S. Computer Science, Georgia Tech.">
+<meta name="keywords" content="Yunseop Im, software engineer, AI engineer, full-stack engineer, AI agents, RAG, GraphRAG, LLM, multimodal AI, Python, TypeScript, React, FastAPI, Node.js, PostgreSQL, Georgia Tech, M.S. Computer Science, open to relocate, EU, US">
+<meta property="og:title" content="Yunseop Im — Software Engineer, AI Engineering">
+<meta property="og:description" content="Production AI systems end to end — agents, retrieval, multimodal pipelines, LLM serving. M.S. CS, Georgia Tech.">
 <meta property="og:type" content="website">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
+  :root {
+    --paper: #f7f5f0;
+    --ink: #16150f;
+    --ink-soft: #4a483f;
+    --ink-faint: #8a877c;
+    --line: #ddd8cc;
+    --accent: #e04e00;
+    --card: #fffdf9;
+  }
   * { margin:0; padding:0; box-sizing:border-box; }
-  body { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
-         line-height:1.7; color:#1a1a1a; max-width:840px; margin:0 auto; padding:56px 24px 80px;
-         background:#fafafa; }
-  h1 { font-size:2.3em; letter-spacing:-0.02em; }
-  .role { font-size:1.15em; color:#444; margin-top:6px; }
-  .role b { color:#1a1a1a; }
-  .loc { margin-top:8px; font-size:0.95em; color:#666; }
-  .status { display:inline-block; margin-top:16px; padding:6px 14px; border-radius:20px;
-            background:#e8f5e9; color:#2e7d32; font-weight:600; font-size:0.88em; }
-  h2 { font-size:1.2em; margin:46px 0 16px; padding-bottom:8px; border-bottom:2px solid #e0e0e0; }
-  .grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
-  .card { background:#fff; border:1px solid #e5e5e5; border-radius:10px; padding:18px 20px; }
-  .card h3 { font-size:1em; margin-bottom:6px; }
-  .card .stack { font-size:0.78em; color:#888; margin-bottom:8px; font-family:ui-monospace,monospace; }
-  .card p { font-size:0.9em; color:#444; }
-  .skills h3 { font-size:0.82em; text-transform:uppercase; letter-spacing:0.06em; color:#777; margin:18px 0 8px; }
-  .tags { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:10px; }
-  .tag { background:#fff; border:1px solid #ddd; border-radius:6px; padding:3px 10px;
-         font-size:0.8em; color:#333; }
-  a { color:#1565c0; text-decoration:none; }
-  a:hover { text-decoration:underline; }
-  .links { margin-top:44px; font-size:0.95em; color:#555; }
-  footer { margin-top:60px; font-size:0.8em; color:#999; }
-  @media (max-width:640px){ .grid{grid-template-columns:1fr;} h1{font-size:1.9em;} }
+  html { scroll-behavior:smooth; }
+  body {
+    font-family:'Inter',-apple-system,sans-serif;
+    background:var(--paper);
+    color:var(--ink);
+    line-height:1.65;
+    -webkit-font-smoothing:antialiased;
+  }
+  .mono { font-family:'IBM Plex Mono',ui-monospace,monospace; }
+  .serif { font-family:'Fraunces',Georgia,serif; }
+
+  /* ---------- shell ---------- */
+  .shell { max-width:1060px; margin:0 auto; padding:0 32px; }
+  .layout { display:grid; grid-template-columns:220px 1fr; gap:64px; padding-top:72px; }
+
+  /* ---------- sidebar ---------- */
+  .side { position:sticky; top:72px; align-self:start; }
+  .side .name { font-family:'Fraunces',serif; font-weight:700; font-size:1.5rem; letter-spacing:-0.02em; }
+  .side .role { font-size:0.78rem; color:var(--ink-soft); margin-top:4px; line-height:1.5; }
+  .side nav { margin-top:36px; display:flex; flex-direction:column; gap:2px; }
+  .side nav a {
+    font-family:'IBM Plex Mono',monospace; font-size:0.72rem; letter-spacing:0.08em;
+    text-transform:uppercase; color:var(--ink-faint); text-decoration:none;
+    padding:7px 0 7px 14px; border-left:2px solid var(--line); transition:all .15s;
+  }
+  .side nav a:hover { color:var(--ink); border-left-color:var(--accent); }
+  .side .meta-block { margin-top:40px; font-size:0.78rem; color:var(--ink-faint); line-height:1.9; }
+  .side .meta-block b { color:var(--ink-soft); font-weight:500; }
+  .side .status {
+    display:inline-block; margin-top:14px; font-family:'IBM Plex Mono',monospace;
+    font-size:0.68rem; letter-spacing:0.06em; text-transform:uppercase;
+    color:var(--accent); border:1px solid var(--accent); border-radius:2px; padding:4px 9px;
+  }
+
+  /* ---------- main ---------- */
+  main { min-width:0; padding-bottom:80px; }
+  section { margin-bottom:72px; }
+  .sec-label {
+    font-family:'IBM Plex Mono',monospace; font-size:0.7rem; letter-spacing:0.14em;
+    text-transform:uppercase; color:var(--accent); margin-bottom:10px;
+    display:flex; align-items:center; gap:10px;
+  }
+  .sec-label::after { content:""; flex:1; height:1px; background:var(--line); }
+  h2 { font-family:'Fraunces',serif; font-weight:600; font-size:1.9rem; letter-spacing:-0.02em; margin-bottom:6px; }
+  .lede { color:var(--ink-soft); font-size:1.02rem; max-width:60ch; }
+
+  /* ---------- hero ---------- */
+  .hero { padding:56px 0 24px; border-bottom:1px solid var(--line); margin-bottom:56px; }
+  .hero .kicker { font-family:'IBM Plex Mono',monospace; font-size:0.72rem; letter-spacing:0.14em; text-transform:uppercase; color:var(--ink-faint); margin-bottom:18px; }
+  .hero h1 { font-family:'Fraunces',serif; font-weight:700; font-size:clamp(2.6rem,6vw,4.2rem); letter-spacing:-0.03em; line-height:1.02; }
+  .hero h1 em { font-style:italic; color:var(--accent); }
+  .hero .sub { margin-top:22px; font-size:1.08rem; color:var(--ink-soft); max-width:56ch; }
+  .hero .facts { margin-top:28px; display:flex; flex-wrap:wrap; gap:8px 28px; font-family:'IBM Plex Mono',monospace; font-size:0.75rem; color:var(--ink-faint); }
+  .hero .facts span b { color:var(--ink-soft); font-weight:500; }
+
+  /* ---------- index list (projects/writing) ---------- */
+  .idx { border-top:1px solid var(--ink); }
+  .idx-row {
+    display:grid; grid-template-columns:110px 1fr auto; gap:24px; align-items:baseline;
+    padding:20px 4px; border-bottom:1px solid var(--line); text-decoration:none; color:inherit;
+    transition:background .12s;
+  }
+  .idx-row:hover { background:var(--card); }
+  .idx-row .d { font-family:'IBM Plex Mono',monospace; font-size:0.72rem; color:var(--ink-faint); }
+  .idx-row .t { font-family:'Fraunces',serif; font-weight:600; font-size:1.15rem; letter-spacing:-0.01em; }
+  .idx-row .t small { display:block; font-family:'Inter',sans-serif; font-weight:400; font-size:0.84rem; color:var(--ink-soft); margin-top:3px; }
+  .idx-row .arr { font-family:'IBM Plex Mono',monospace; color:var(--ink-faint); font-size:0.85rem; transition:transform .15s,color .15s; }
+  .idx-row:hover .arr { transform:translateX(4px); color:var(--accent); }
+  .idx-row .tags { grid-column:2; display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
+  .idx-row .tag { font-family:'IBM Plex Mono',monospace; font-size:0.65rem; letter-spacing:0.04em; color:var(--ink-faint); border:1px solid var(--line); border-radius:2px; padding:2px 7px; }
+
+  /* ---------- focus areas ---------- */
+  .focus { display:grid; grid-template-columns:1fr 1fr; gap:1px; background:var(--line); border:1px solid var(--line); }
+  .focus > div { background:var(--paper); padding:22px 24px; }
+  .focus h3 { font-family:'Fraunces',serif; font-size:1.05rem; font-weight:600; margin-bottom:6px; }
+  .focus p { font-size:0.86rem; color:var(--ink-soft); }
+  .focus .n { font-family:'IBM Plex Mono',monospace; font-size:0.65rem; color:var(--accent); letter-spacing:0.1em; }
+
+  /* ---------- skills ---------- */
+  .skill-group { display:grid; grid-template-columns:150px 1fr; gap:20px; padding:14px 0; border-bottom:1px solid var(--line); font-size:0.88rem; }
+  .skill-group:last-child { border-bottom:none; }
+  .skill-group .k { font-family:'IBM Plex Mono',monospace; font-size:0.72rem; letter-spacing:0.08em; text-transform:uppercase; color:var(--ink-faint); padding-top:2px; }
+  .skill-group .v { color:var(--ink-soft); }
+  .skill-group .v b { color:var(--ink); font-weight:600; }
+
+  /* ---------- links/footer ---------- */
+  .links { display:flex; flex-wrap:wrap; gap:10px 26px; font-size:0.92rem; }
+  .links a { color:var(--ink); text-decoration:none; border-bottom:1px solid var(--line); padding-bottom:1px; transition:border-color .15s; }
+  .links a:hover { border-bottom-color:var(--accent); color:var(--accent); }
+  footer { margin-top:80px; padding-top:20px; border-top:1px solid var(--line); font-family:'IBM Plex Mono',monospace; font-size:0.7rem; color:var(--ink-faint); display:flex; justify-content:space-between; flex-wrap:wrap; gap:8px; }
+
+  @media (max-width:860px){
+    .layout { grid-template-columns:1fr; gap:32px; padding-top:40px; }
+    .side { position:static; }
+    .side nav { flex-direction:row; flex-wrap:wrap; gap:4px 14px; }
+    .side nav a { border-left:none; padding:4px 0; }
+    .focus { grid-template-columns:1fr; }
+    .skill-group { grid-template-columns:1fr; gap:4px; }
+    .idx-row { grid-template-columns:1fr; gap:6px; }
+    .idx-row .d { order:2; }
+  }
 </style>
 </head>
 <body>
+<div class="shell">
+<div class="layout">
 
-<h1>Yunseop Im</h1>
-<p class="role"><b>Full-Stack Software Engineer — AI Engineering.</b> Full-stack software engineer with 3 years building production systems — backend services, frontend interfaces, and applied-AI products. Current focus: AI agents, retrieval (RAG/GraphRAG), multimodal pipelines, and LLM infrastructure — including on-prem model serving.</p>
-<p class="loc">Suwon, South Korea · Georgia Tech, Atlanta — M.S. Computer Science (AI specialization)</p>
-<span class="status">Open to relocate — EU / US · Remote OK</span>
+  <!-- ============ SIDEBAR ============ -->
+  <aside class="side">
+    <div class="name serif">Yunseop Im</div>
+    <div class="role">Software Engineer — AI Engineering<br>M.S. Computer Science, Georgia Tech</div>
+    <span class="status">Open to relocate — EU / US</span>
+    <nav>
+      <a href="#work">Work</a>
+      <a href="#focus">Focus</a>
+      <a href="#stack">Stack</a>
+      <a href="#writing">Writing</a>
+      <a href="#contact">Contact</a>
+    </nav>
+    <div class="meta-block">
+      <b>Based</b> Suwon, South Korea<br>
+      <b>Education</b> Georgia Tech, Atlanta — M.S. CS (AI)<br>
+      <b>Experience</b> 3 yrs production systems
+    </div>
+  </aside>
 
-<h2>What I'm building</h2>
-<div class="grid">
-  <div class="card">
-    <h3><a href="/projects/devin-harness.html">devin-harness</a></h3>
-    <div class="stack">Node.js · TypeScript · agent hooks · MIT</div>
-    <p>Open-source operating system for agentic repos — lifecycle hooks, deterministic exec/file guards, action ledger, typed LLM review gates, dispatch contract. <a href="/writing/agents.html">Teardown →</a></p>
-  </div>
-  <div class="card">
-    <h3><a href="/projects/graphrag-lab.html">graphrag-lab</a></h3>
-    <div class="stack">Python · SQLite · GraphRAG</div>
-    <p>Knowledge-graph-grounded retrieval experiments — hybrid BM25 + graph-expansion GraphRAG, pure-Python stdlib, runnable demo with tests.</p>
-  </div>
-  <div class="card">
-    <h3><a href="/projects/freightscaler.html">FreightScaler</a></h3>
-    <div class="stack">React · TypeScript · AWS serverless · OR-Tools · Kafka</div>
-    <p>Full-stack SaaS — real-time freight risk intelligence. Route optimization, multi-tenant quotas + idempotency, 24 ADRs, live demo. <a href="/writing/freightscaler.html">Architecture writeup →</a></p>
-  </div>
+  <!-- ============ MAIN ============ -->
+  <main>
+
+    <div class="hero">
+      <div class="kicker">Portfolio — 2026</div>
+      <h1>I build <em>production AI systems</em> end to end.</h1>
+      <p class="sub">Backend services, frontend interfaces, and the retrieval + inference layers in between. Current focus: AI agents, RAG/GraphRAG, multimodal pipelines, and LLM infrastructure — including on-prem serving where data can't leave the building.</p>
+      <div class="facts">
+        <span><b>Role</b> Full-stack SWE, AI products</span>
+        <span><b>Stack</b> Python · TypeScript · React · FastAPI · Node</span>
+        <span><b>AI</b> agents · RAG · multimodal · LLM serving</span>
+      </div>
+    </div>
+
+    <!-- WORK -->
+    <section id="work">
+      <div class="sec-label">Selected work</div>
+      <h2>Things I've built</h2>
+      <p class="lede">Open-source projects and shipped products — each with a case study.</p>
+      <div class="idx" style="margin-top:24px">
+        <a class="idx-row" href="/projects/graphrag-lab.html">
+          <span class="d">2026</span>
+          <span class="t">graphrag-lab<small>Knowledge-graph-grounded retrieval experiments — hybrid BM25 + graph expansion in pure Python stdlib, runnable with tests.</small>
+            <span class="tags"><span class="tag">Python</span><span class="tag">GraphRAG</span><span class="tag">BM25</span><span class="tag">SQLite</span></span>
+          </span>
+          <span class="arr">→</span>
+        </a>
+        <a class="idx-row" href="/projects/devin-harness.html">
+          <span class="d">2026</span>
+          <span class="t">devin-harness<small>Operating system for agentic repos — lifecycle hooks, deterministic guards, review gates, dispatch contract. MIT.</small>
+            <span class="tags"><span class="tag">AI agents</span><span class="tag">TypeScript</span><span class="tag">guardrails</span><span class="tag">open source</span></span>
+          </span>
+          <span class="arr">→</span>
+        </a>
+        <a class="idx-row" href="/projects/freightscaler.html">
+          <span class="d">2025–26</span>
+          <span class="t">FreightScaler<small>Real-time freight risk intelligence SaaS — React/TS frontend, AWS serverless backend, OR-Tools optimization, 24 ADRs, live demo.</small>
+            <span class="tags"><span class="tag">React</span><span class="tag">AWS</span><span class="tag">Lambda</span><span class="tag">SaaS</span><span class="tag">Terraform</span></span>
+          </span>
+          <span class="arr">→</span>
+        </a>
+      </div>
+      <p style="margin-top:16px; font-size:0.85rem;"><a href="/projects/" style="color:var(--accent)">All project case studies →</a></p>
+    </section>
+
+    <!-- FOCUS -->
+    <section id="focus">
+      <div class="sec-label">Focus areas</div>
+      <h2>What I work on</h2>
+      <div class="focus" style="margin-top:20px">
+        <div><span class="n">01</span><h3>AI agents &amp; orchestration</h3><p>Agent loops, tool calling, guardrails, multi-agent patterns, MCP servers, dispatch contracts.</p></div>
+        <div><span class="n">02</span><h3>Retrieval — RAG / GraphRAG</h3><p>Hybrid sparse+dense retrieval, reranking, knowledge-graph grounding, per-tenant isolation, evals.</p></div>
+        <div><span class="n">03</span><h3>LLM infrastructure</h3><p>On-prem model serving, GPU deployment, guided decoding, cost/latency tuning, observability.</p></div>
+        <div><span class="n">04</span><h3>Multimodal systems</h3><p>Real-time audio/video pipelines, streaming inference, split-agent architectures, session runtimes.</p></div>
+        <div><span class="n">05</span><h3>Backend &amp; distributed</h3><p>FastAPI · Node.js · Spring Boot · gRPC · PostgreSQL · Redis · Kafka · multi-tenant SaaS.</p></div>
+      </div>
+    </section>
+
+    <!-- STACK -->
+    <section id="stack">
+      <div class="sec-label">Stack</div>
+      <h2>Tools I use</h2>
+      <div style="margin-top:20px">
+        <div class="skill-group"><span class="k">Languages</span><span class="v"><b>Python</b> · <b>TypeScript</b> · <b>JavaScript</b> · <b>SQL</b> · Java</span></div>
+        <div class="skill-group"><span class="k">Backend</span><span class="v"><b>FastAPI</b> · <b>Node.js</b> · <b>Spring Boot</b> · <b>gRPC</b> · REST · WebSockets/SSE · <b>PostgreSQL</b> · Redis · Kafka</span></div>
+        <div class="skill-group"><span class="k">Frontend</span><span class="v"><b>React</b> · TypeScript · Tailwind · TanStack Query · Zustand</span></div>
+        <div class="skill-group"><span class="k">AI engineering</span><span class="v"><b>LLM APIs</b> · agents &amp; tool-calling (LangChain, MCP) · <b>RAG/GraphRAG</b> · hybrid retrieval · vector DBs (Qdrant, pgvector) · knowledge graphs · multimodal pipelines · evals (Ragas, Langfuse) · guardrails · on-prem serving</span></div>
+        <div class="skill-group"><span class="k">Infra</span><span class="v"><b>Docker</b> · <b>Kubernetes</b> · <b>Terraform</b> · <b>AWS</b> · GCP · Cloudflare Workers · CI/CD · OpenTelemetry · Prometheus · Sentry</span></div>
+      </div>
+    </section>
+
+    <!-- WRITING -->
+    <section id="writing">
+      <div class="sec-label">Writing</div>
+      <h2>Notes &amp; teardowns</h2>
+      <div class="idx" style="margin-top:24px">
+        <a class="idx-row" href="/writing/agents.html"><span class="d">2026</span><span class="t">Running autonomous AI agents safely<small>devin-harness teardown — hooks, guards, review gates, why deterministic beats prompts.</small></span><span class="arr">→</span></a>
+        <a class="idx-row" href="/writing/freightscaler.html"><span class="d">2026</span><span class="t">Building a real-time freight risk SaaS<small>Serverless-first to four architectural eras — 24 ADRs, OR-Tools, honest data doctrine.</small></span><span class="arr">→</span></a>
+        <a class="idx-row" href="/writing/tenant-rag.html"><span class="d">2026</span><span class="t">Per-tenant RAG isolation<small>Multi-tenant AI SaaS retrieval as a security boundary — quota math, failure modes, migration paths.</small></span><span class="arr">→</span></a>
+        <a class="idx-row" href="/writing/oss-stack.html"><span class="d">2026</span><span class="t">The production AI open-source stack<small>Field guide: SGLang, Langfuse, LangGraph, MCP, Qdrant, Ragas, LiteLLM — what survives production.</small></span><span class="arr">→</span></a>
+      </div>
+    </section>
+
+    <!-- CONTACT -->
+    <section id="contact">
+      <div class="sec-label">Contact</div>
+      <h2>Get in touch</h2>
+      <div class="links" style="margin-top:20px">
+        <a href="https://github.com/signalgap9-del">GitHub</a>
+        <a href="https://www.linkedin.com/in/yunseop-i-207a7215a/">LinkedIn</a>
+        <a href="/resume.html">Resume</a>
+        <a href="mailto:tristayunsub@gmail.com">tristayunsub@gmail.com</a>
+      </div>
+      <p class="lede" style="margin-top:18px; font-size:0.9rem;">Open to relocate — EU / US. Remote OK. Dutch Orientation Year visa expected early 2027.</p>
+    </section>
+
+    <footer>
+      <span>© 2026 Yunseop Im</span>
+      <span>Suwon, KR · Georgia Tech, Atlanta — M.S. CS</span>
+    </footer>
+
+  </main>
 </div>
-
-<h2>Focus areas</h2>
-<div class="grid">
-  <div class="card">
-    <h3>AI agents &amp; orchestration</h3>
-    <p>Agent loops, tool calling, guardrails/harnesses, multi-agent patterns, MCP servers, dispatch contracts.</p>
-  </div>
-  <div class="card">
-    <h3>Retrieval — RAG / GraphRAG</h3>
-    <p>Hybrid sparse+dense retrieval, reranking, knowledge-graph grounding, per-tenant isolation, evaluation (Ragas).</p>
-  </div>
-  <div class="card">
-    <h3>LLM infrastructure</h3>
-    <p>On-prem model serving (SGLang), GPU deployment, guided decoding, cost/latency tuning, observability.</p>
-  </div>
-  <div class="card">
-    <h3>Multimodal systems</h3>
-    <p>Real-time audio/video pipelines, streaming inference, split-agent architectures, session runtimes.</p>
-  </div>
-  <div class="card">
-    <h3>Backend &amp; distributed systems</h3>
-    <p>FastAPI · Node.js · Spring Boot · gRPC · PostgreSQL · Redis · Kafka · multi-tenant SaaS · idempotency · API design.</p>
-  </div>
 </div>
-
-<h2>Stack</h2>
-<div class="skills">
-  <h3>Languages</h3>
-  <div class="tags"><span class="tag">Python</span><span class="tag">TypeScript</span><span class="tag">JavaScript</span><span class="tag">SQL</span></div>
-  <h3>Backend</h3>
-  <div class="tags"><span class="tag">FastAPI</span><span class="tag">Node.js</span><span class="tag">REST</span><span class="tag">WebSockets</span><span class="tag">PostgreSQL</span><span class="tag">Redis</span><span class="tag">Kafka</span><span class="tag">Spring Boot</span><span class="tag">gRPC</span></div>
-  <h3>Frontend</h3>
-  <div class="tags"><span class="tag">React</span><span class="tag">TypeScript</span><span class="tag">Tailwind</span><span class="tag">WebSocket/SSE</span></div>
-  <h3>AI engineering</h3>
-  <div class="tags"><span class="tag">LLM APIs</span><span class="tag">AI agents</span><span class="tag">RAG / GraphRAG</span><span class="tag">hybrid retrieval</span><span class="tag">embeddings</span><span class="tag">MCP</span><span class="tag">multimodal pipelines</span><span class="tag">on-prem LLM serving</span><span class="tag">evals</span><span class="tag">guardrails</span><span class="tag">Langfuse</span><span class="tag">Ragas</span><span class="tag">vector DBs</span><span class="tag">knowledge graphs</span></div>
-  <h3>Infra</h3>
-  <div class="tags"><span class="tag">Docker</span><span class="tag">Linux</span><span class="tag">AWS</span><span class="tag">Cloudflare</span><span class="tag">CI/CD</span></div>
-</div>
-
-<h2>Education</h2>
-<p style="font-size:0.95em; color:#444;">
-<b>Georgia Institute of Technology</b> — M.S. Computer Science, AI specialization · Atlanta, GA
-</p>
-
-<h2>Projects &amp; writing</h2>
-<p style="font-size:0.92em;"><a href="/projects/">All project case studies →</a></p>
-<p style="font-size:0.95em;">
-<a href="/writing/agents.html">Running autonomous AI agents safely — devin-harness teardown</a><br>
-<a href="/writing/freightscaler.html">Building a real-time freight risk intelligence SaaS</a><br>
-<a href="/writing/tenant-rag.html">Per-tenant RAG isolation in multi-tenant AI SaaS</a><br>
-<a href="/writing/oss-stack.html">The production AI open-source stack worth adopting</a>
-</p>
-
-<p class="links">
-  <a href="/resume.html">Resume</a> ·
-  <a href="https://github.com/signalgap9-del">GitHub</a> ·
-  <a href="https://www.linkedin.com/in/yunseop-i-207a7215a/">LinkedIn</a> ·
-  <a href="mailto:tristayunsub@gmail.com">tristayunsub@gmail.com</a>
-</p>
-
-<footer>© 2026 Yunseop Im — Suwon, South Korea · Georgia Tech, Atlanta — M.S. Computer Science</footer>
-
 </body>
 </html>
