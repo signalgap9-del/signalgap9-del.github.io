@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>graphrag-lab — GraphRAG Retrieval Experiments | Yunseop Im</title>
+<meta name="description" content="Case study: graphrag-lab — hybrid BM25 + knowledge-graph expansion retrieval in pure Python stdlib. Runnable GraphRAG demo with tests by Yunseop Im.">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+         line-height:1.75; color:#1a1a1a; max-width:780px; margin:0 auto; padding:48px 24px 80px; background:#fafafa; }
+  h1 { font-size:1.9em; letter-spacing:-0.02em; line-height:1.25; }
+  h2 { font-size:1.25em; margin:38px 0 12px; }
+  .meta { color:#888; font-size:0.85em; margin:10px 0 26px; }
+  .tags { margin:12px 0 26px; }
+  .tag { display:inline-block; background:#fff; border:1px solid #ddd; border-radius:6px;
+         padding:3px 10px; font-size:0.78em; color:#333; margin:0 5px 5px 0; }
+  p, li { color:#333; font-size:0.95em; }
+  ul, ol { padding-left:24px; }
+  li { margin:6px 0; }
+  code { background:#eee; padding:1px 6px; border-radius:4px; font-size:0.88em; font-family:ui-monospace,Menlo,monospace; }
+  pre { background:#1e1e1e; color:#d4d4d4; padding:16px 18px; border-radius:8px; overflow-x:auto; font-size:0.8em; margin:14px 0; }
+  pre code { background:none; padding:0; color:inherit; }
+  a { color:#1565c0; }
+  .back { display:inline-block; margin-bottom:24px; font-size:0.88em; color:#666; }
+  .cta { margin-top:40px; padding:18px 22px; background:#fff; border:1px solid #e0e0e0; border-radius:10px; font-size:0.92em; }
+</style>
+</head>
+<body>
+<a class="back" href="/projects/">← All projects</a>
+<h1>graphrag-lab — GraphRAG retrieval experiments</h1>
+<p class="meta">Yunseop Im · 2026 · <a href="https://github.com/signalgap9-del/graphrag-lab">github.com/signalgap9-del/graphrag-lab</a></p>
+<div class="tags">
+  <span class="tag">Python</span><span class="tag">GraphRAG</span><span class="tag">BM25</span>
+  <span class="tag">SQLite</span><span class="tag">information retrieval</span><span class="tag">open source</span>
+</div>
+
+<h2>The question</h2>
+<p>Vector search is good at semantics but weak at exact identifiers; keyword search is the
+opposite. GraphRAG promises a third signal — <em>structure</em>: if the query mentions an
+entity, chunks connected to that entity's neighborhood should rank higher even when the
+words don't match. I wanted to test that claim with the smallest possible honest
+implementation, so every design decision is visible.</p>
+
+<h2>What it does</h2>
+<ul>
+  <li><strong>Chunking</strong> — sentence-aware splitter, 120-word chunks with 25-word overlap</li>
+  <li><strong>Entity/relation extraction</strong> — deterministic heuristic baseline (capitalized phrases + connectors), explicitly <em>not</em> an LLM — the docstring says so</li>
+  <li><strong>Store</strong> — SQLite schema: chunks, entities, relations, chunk↔entity links, plus an Okapi BM25 scorer written in pure Python</li>
+  <li><strong>Hybrid retrieval</strong> — normalized BM25 score fused with a graph-expansion score (query entities → 1-hop neighbors boost connected chunks) via a tunable weight</li>
+  <li><strong>CLI</strong> — <code>python -m graphrag.cli index &lt;dir&gt;</code> / <code>query "..."</code> / <code>stats</code></li>
+</ul>
+
+<h2>Verified, not claimed</h2>
+<pre><code>$ python -m graphrag.cli index examples/corpus
+14 chunks, 50 entities, 38 relations -> graphrag.db
+
+$ python -m unittest tests.test_pipeline
+Ran 8 tests — OK   # incl. test_graph_expansion_changes_ranking:
+                   # graph_weight 0 vs 0.9 measurably reorders results</code></pre>
+<p>Zero dependencies — stdlib only. That was deliberate: a clean-room demo where the
+retrieval math is auditable line by line.</p>
+
+<h2>Honest limitations</h2>
+<p>The entity extractor is regex-based and emits noise; relations are undirected
+co-mentions, not typed edges; there are no embeddings. This is a <em>structural baseline</em>
+to compare against — the README's "verified vs prototype" section says exactly that.</p>
+
+<div class="cta">
+<strong>Repo:</strong> <a href="https://github.com/signalgap9-del/graphrag-lab">github.com/signalgap9-del/graphrag-lab</a> ·
+<a href="/">profile</a> ·
+<a href="https://www.linkedin.com/in/yunseop-i-207a7215a/">LinkedIn</a>
+</div>
+</body>
+</html>
