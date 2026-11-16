@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Running LLM Inference on Customer GPUs — What On-Prem Serving Actually Takes | Yunseop Im</title>
+<meta name="description" content="Field notes from running production LLM inference on customer-owned GPUs: SGLang serving, continuous batching, KV-cache tuning, guided decoding for citation-grounded output, and the operational constraints that decide whether on-prem AI is viable.">
+<meta name="keywords" content="on-prem LLM serving, SGLang, GPU inference, self-hosted LLM, guided decoding, KV cache, continuous batching, LLM infrastructure, enterprise AI, on-premise AI">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+         line-height:1.75; color:#1a1a1a; max-width:780px; margin:0 auto; padding:48px 24px 80px; background:#fafafa; }
+  h1 { font-size:2em; letter-spacing:-0.02em; line-height:1.25; }
+  h2 { font-size:1.25em; margin:40px 0 12px; }
+  .meta { color:#888; font-size:0.85em; margin:10px 0 26px; }
+  p, li { color:#333; font-size:0.95em; }
+  ul, ol { padding-left:24px; }
+  li { margin:6px 0; }
+  code { background:#eee; padding:1px 6px; border-radius:4px; font-size:0.88em; font-family:ui-monospace,Menlo,monospace; }
+  a { color:#1565c0; }
+  .back { display:inline-block; margin-bottom:24px; font-size:0.88em; color:#666; }
+  .cta { margin-top:44px; padding:18px 22px; background:#fff; border:1px solid #e0e0e0; border-radius:10px; font-size:0.92em; }
+  blockquote { border-left:3px solid #ddd; padding:4px 0 4px 16px; color:#555; margin:14px 0; }
+</style>
+</head>
+<body>
+<a class="back" href="/writing/">← Writing</a>
+<h1>Running LLM inference on customer GPUs — what on-prem serving actually takes</h1>
+<p class="meta">Yunseop Im · Software engineer, AI engineering · M.S. CS, Georgia Tech · 2026</p>
+
+<p>"Just call the API" works until it doesn't. For enterprise customers with
+engineering drawings, supplier contracts, and unreleased product data, sending
+prompts to a third-party LLM endpoint is a non-starter — the data legally can't
+leave the building. That constraint turns "add an AI feature" into an
+infrastructure problem: <strong>you now own the GPU, the serving stack, and the
+failure modes.</strong></p>
+
+<p>This is a field guide to what that actually involves, from running production
+inference on customer-owned hardware. The stack: <strong>SGLang serving Gemma-class
+models</strong>, continuous batching, KV-cache tuning, and guided decoding for
+structured output. The lessons are mostly about constraints, not benchmarks.</p>
+
+<h2>Constraint 1: you don't choose the hardware</h2>
+
+<p>Cloud inference assumes you pick the GPU. On-prem, the customer already bought
+it — maybe last year, maybe a mixed fleet, maybe whatever was cheapest. Your
+serving stack has to degrade gracefully across SKUs you didn't select: different
+memory ceilings, different interconnects, different thermal envelopes. The first
+design question isn't "what's the fastest config" — it's "what's the slowest GPU
+we have to support, and does the model even fit?"</p>
+
+<p>Practical consequence: quantization isn't optional, it's the baseline. A model
+that fits comfortably on an A100 may not fit on the customer's RTX card at all,
+and the fallback path has to be decided before launch, not during the first
+OOM at 2am customer time.</p>
+
+<h2>Constraint 2: serving is a systems problem, not a model problem</h2>
+
+<p>SGLang (and vLLM) earn their complexity here. The features that matter in
+production aren't the headline ones:</p>
+
+<ul>
+  <li><strong>Continuous batching</strong> — requests arrive unpredictably; without
+  batching, GPU utilization collapses and latency variance explodes. This is the
+  difference between "works in a notebook" and "works for 40 concurrent users."</li>
+  <li><strong>KV-cache management</strong> — the cache is where memory pressure
+  actually lives. Tuning eviction and allocation policy is most of the serving
+  work; the model weights are the easy part.</li>
+  <li><strong>Guided decoding</strong> — constraining output to a schema or
+  grammar <em>during</em> inference, not after. For citation-grounded answers —
+  every response must reference the document it came from — this is what makes
+  structured output reliable instead of "usually parses."</li>
+</ul>
+
+<p>The counterintuitive part: most of the engineering effort goes into the
+<em>unsexy</em> layer — request queuing, timeout behavior, graceful degradation
+when the GPU is saturated — not into model selection.</p>
+
+<h2>Constraint 3: quality is a regression problem</h2>
+
+<p>A cloud model gets updated silently; your on-prem model is frozen at whatever
+version you deployed. That means quality isn't a one-time evaluation — it's a
+<em>regression surface</em>. The working setup we use:</p>
+
+<ul>
+  <li><strong>Golden-set regression tests</strong> — a fixed set of real queries
+  with expected citation behavior, run on every config change. If guided decoding
+  parameters shift, the tests catch it before users do.</li>
+  <li><strong>Faithfulness checks</strong> — answers are scored against their
+  retrieved sources, not just for fluency. A confident wrong answer with a fake
+  citation is worse than no answer.</li>
+  <li><strong>Human handoff</strong> — below a confidence threshold, the system
+  escalates instead of guessing. In engineering domains where a wrong answer
+  about a part revision can cause a real-world error, "I don't know" is a
+  feature.</li>
+</ul>
+
+<h2>Constraint 4: operations you didn't sign up for</h2>
+
+<p>On-prem serving means you inherit the customer's operational reality:</p>
+
+<ul>
+  <li><strong>Observability is yours</strong> — no provider dashboard. You need
+  your own metrics for queue depth, time-to-first-token, cache hit rates, and
+  error rates, plus alerting that pages someone who can actually fix it.</li>
+  <li><strong>Updates are deliberate</strong> — model upgrades, driver updates,
+  and serving-stack updates all require regression runs. "Just redeploy" is a
+  change-management process.</li>
+  <li><strong>The network is hostile</strong> — customer firewalls, proxies, and
+  air-gapped segments are the norm, not the exception. Telemetry that assumes
+  outbound internet access silently fails.</li>
+</ul>
+
+<h2>The honest summary</h2>
+
+<blockquote>
+On-prem LLM serving isn't "deploy a model." It's operating a production
+inference service under hardware constraints you didn't choose, quality
+regressions you have to test for, and an operational surface you fully own.
+The teams that succeed treat it like infrastructure — with the same rigor as
+the databases and queues around it.
+</blockquote>
+
+<p>The leverage isn't in picking the right model — it's in the boring layers:
+serving configuration, structured output guarantees, regression testing, and
+knowing when to say "I don't know." Those are the parts that decide whether
+on-prem AI is a product or a demo.</p>
+
+<div class="cta">
+<strong>Related:</strong> <a href="/writing/oss-stack.html">The production AI open-source stack</a> ·
+<a href="/writing/tenant-rag.html">Per-tenant RAG isolation</a> ·
+<a href="/">profile</a> ·
+<a href="https://www.linkedin.com/in/yunseop-i-207a7215a/">LinkedIn</a>
+</div>
+</body>
+</html>
