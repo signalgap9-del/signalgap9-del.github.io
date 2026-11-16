@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GraphRAG for Engineering Data — Why PLM Documents Break Naive RAG | Yunseop Im</title>
+<meta name="description" content="A field guide to retrieval over engineering data: why PLM documents (BOMs, revisions, ECOs, drawings) defeat chunk-and-embed RAG, how knowledge-graph expansion fixes multi-hop questions, and the architecture that makes GraphRAG work in production — multi-tenant, cited, honest about its limits.">
+<meta name="keywords" content="GraphRAG, PLM, engineering data retrieval, BOM retrieval, revision control RAG, knowledge graph RAG, enterprise RAG, LLM retrieval, hybrid search, BM25 dense retrieval, RAG limitations, engineering document AI, multi-tenant RAG">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+         line-height:1.75; color:#1a1a1a; max-width:780px; margin:0 auto; padding:48px 24px 80px; background:#fafafa; }
+  h1 { font-size:2em; letter-spacing:-0.02em; line-height:1.25; }
+  h2 { font-size:1.3em; margin:48px 0 14px; letter-spacing:-0.01em; }
+  h3 { font-size:1.05em; margin:28px 0 8px; }
+  .meta { color:#888; font-size:0.85em; margin:10px 0 26px; }
+  p, li { color:#333; font-size:0.95em; }
+  ul, ol { padding-left:24px; }
+  li { margin:6px 0; }
+  code { background:#eee; padding:1px 6px; border-radius:4px; font-size:0.86em; font-family:ui-monospace,Menlo,monospace; }
+  pre { background:#1e1e1e; color:#d4d4d4; padding:18px 20px; border-radius:8px;
+        overflow-x:auto; font-size:0.82em; line-height:1.6; margin:16px 0; }
+  pre code { background:none; padding:0; color:inherit; font-size:inherit; }
+  a { color:#1565c0; }
+  .back { display:inline-block; margin-bottom:24px; font-size:0.88em; color:#666; }
+  .cta { margin-top:48px; padding:18px 22px; background:#fff; border:1px solid #e0e0e0; border-radius:10px; font-size:0.92em; }
+  blockquote { border-left:3px solid #ddd; padding:4px 0 4px 16px; color:#555; margin:14px 0; }
+  .toc { background:#fff; border:1px solid #e0e0e0; border-radius:10px; padding:18px 22px; margin:24px 0; font-size:0.9em; }
+  .toc strong { display:block; margin-bottom:8px; }
+  .toc a { display:block; padding:2px 0; color:#444; text-decoration:none; }
+  .toc a:hover { color:#1565c0; }
+  .diagram { background:#fff; border:1px solid #e0e0e0; border-radius:10px; padding:24px; margin:24px 0; overflow-x:auto; }
+  .diagram svg { display:block; margin:0 auto; max-width:100%; height:auto; }
+  .sources { margin-top:36px; font-size:0.85em; color:#666; }
+  .sources a { color:#888; }
+  .callout { background:#fff8e1; border:1px solid #ffe082; border-radius:8px; padding:14px 18px; margin:16px 0; font-size:0.92em; color:#5d4037; }
+</style>
+</head>
+<body>
+<a class="back" href="/writing/">← Writing</a>
+<h1>GraphRAG for engineering data — why PLM documents break naive RAG</h1>
+<p class="meta">Yunseop Im · Software engineer · M.S. CS, Georgia Tech · 2026 · ~20 min read</p>
+
+<div class="toc">
+<strong>Contents</strong>
+<a href="#problem">1. The retrieval problem nobody demos</a>
+<a href="#why-naive-fails">2. Why chunk-and-embed fails on engineering data</a>
+<a href="#graph">3. What a knowledge graph actually buys you</a>
+<a href="#arch">4. Architecture: from documents to cited answers</a>
+<a href="#tenancy">5. Multi-tenancy and the graph</a>
+<a href="#limits">6. Honest limits</a>
+<a href="#repo">7. Reference implementation</a>
+</div>
+
+<h2 id="problem">1. The retrieval problem nobody demos</h2>
+
+<p>Every RAG demo uses the same corpus: PDFs of prose. Wikipedia articles, product
+documentation, support tickets — text written <em>for</em> humans to read linearly.
+Chunk it, embed it, cosine-similarity it, done.</p>
+
+<p>Engineering data is not that. In a PLM (product lifecycle management) corpus —
+the system of record for how physical products get designed, revised, and
+manufactured — the documents are <strong>versioned, relational, and
+scope-bound</strong>:</p>
+
+<ul>
+  <li><strong>BOMs</strong> (bills of materials) are tables, not paragraphs — a
+  parent assembly pointing at hundreds of child parts with quantities, effectivity
+  dates, and revision pins.</li>
+  <li><strong>Revisions</strong> mean the same part number refers to different
+  physical objects across time. "Bracket, PN-4471" in rev A and rev C are
+  different parts wearing the same name.</li>
+  <li><strong>ECOs</strong> (engineering change orders) describe <em>changes</em>,
+  not states — "ECO-2291 replaces fastener F-88 with F-91 on assemblies A-12
+  through A-19, effective March." The answer to "what changed?" lives in the
+  relationship between documents, not inside any one of them.</li>
+  <li><strong>Drawings and specs</strong> cross-reference each other by number —
+  "see note 4," "per DWG-2210," "dimensions in mm unless noted." The referent of
+  half the sentences is another document entirely.</li>
+</ul>
+
+<p>The queries users actually ask are relational too:</p>
+
+<ul>
+  <li>"Which assemblies still use fastener F-88 after ECO-2291?"</li>
+  <li>"What changed on PN-4471 between rev B and rev C?"</li>
+  <li>"Show me every part affected by supplier S's recall notice."</li>
+  <li>"What's the current revision of the housing, and which ECO approved it?"</li>
+</ul>
+
+<p>None of these are answerable by finding the most similar <em>text chunk</em>.
+They require traversing <em>relationships</em>. That's the gap GraphRAG exists to
+fill — and it's why "we tried RAG on our engineering docs and it hallucinated"
+is the most common outcome in this domain.</p>
+
+<h2 id="why-naive-fails">2. Why chunk-and-embed fails on engineering data</h2>
+
+<p>Naive RAG fails on engineering corpora for four specific, mechanical reasons —
+not because embeddings are bad, but because the retrieval unit is wrong.</p>
+
+<h3>2.1 The chunk boundary destroys the structure</h3>
+
+<p>Standard chunking splits documents at token counts — 512 tokens, 50% overlap,
+whatever. Applied to a BOM table, this produces chunks like:</p>
+
+<pre><code>... F-88  M6x20 SHCS  4  REV-C ... PN-4471 BRACKET ...
+   A-12 ASSY TOP COVER ... 2 ... F-91 ...</code></pre>
+
+<p>A chunk containing "F-88" without the row's assembly context, quantity, or
+effectivity is not a smaller version of the truth — it's a <em>different</em>
+statement. The model receives fragments that look authoritative and aren't.</p>
+
+<h3>2.2 Embeddings can't represent "current" vs "historical"</h3>
+
+<p>Rev A and rev C of the same document are near-identical in embedding space —
+they share vocabulary, structure, and intent. Cosine similarity will happily
+retrieve <em>both</em>, and rank the obsolete one equally. There is no semantic
+signal for "this revision is superseded" because supersession is a
+<em>graph fact</em>, not a text feature.</p>
+
+<h3>2.3 Identifiers aren't semantics</h3>
+
+<p>"PN-4471" embeds as noise — a part number has no semantic neighborhood. Dense
+retrieval is built on semantic similarity, and engineering data runs on
+<em>identifier joins</em>. The question "which drawings reference PN-4471" is a
+lookup problem dressed as a search problem.</p>
+
+<h3>2.4 Multi-hop questions have no single source chunk</h3>
+
+<p>"Which assemblies use F-88 after ECO-2291" requires: find the ECO → extract the
+affected assembly range → check each assembly's current BOM → filter by effectivity.
+No chunk contains that answer. The answer is a <em>computation over relationships</em>
+that retrieval must assemble first.</p>
+
+<div class="callout">
+<strong>The pattern:</strong> naive RAG answers "what does this document say."
+Engineering questions ask "what is true <em>now</em>, across documents, given how
+they relate." Those are different information problems, and only the second one
+needs a graph.
+</div>
+
+<h2 id="graph">3. What a knowledge graph actually buys you</h2>
+
+<p>A knowledge graph represents the corpus as entities and relationships instead
+of text spans:</p>
+
+<pre><code>Part("PN-4471") ──has_revision──▶ Revision("C")
+Revision("C") ──supersedes──▶ Revision("B")
+Assembly("A-12") ──contains──▶ Part("F-88")
+ECO("ECO-2291") ──affects──▶ Assembly("A-12".."A-19")
+ECO("ECO-2291") ──replaces──▶ Part("F-88") ──with──▶ Part("F-91")
+Drawing("DWG-2210") ──depicts──▶ Part("PN-4471")</code></pre>
+
+<p>Now the failing queries become traversals:</p>
+
+<ul>
+  <li>"What changed on PN-4471 between rev B and C?" → walk the
+  <code>supersedes</code> edge, diff the two revision nodes' attributes.</li>
+  <li>"Which assemblies still use F-88 after ECO-2291?" → expand ECO-2291's
+  <code>affects</code> range, traverse each assembly's <code>contains</code>
+  edges, filter by the ECO's effective date and current revision.</li>
+  <li>"What does DWG-2210 specify?" → follow <code>depicts</code> to the part,
+  then <code>has_revision</code> to the <em>current</em> revision — not whichever
+  revision the embedding happened to rank first.</li>
+</ul>
+
+<p>This is what "GraphRAG" means in practice: <strong>graph traversal produces
+candidate context that flat retrieval can't reach, then the LLM answers over
+that assembled context with citations.</strong> The graph doesn't replace the
+LLM — it fixes what the LLM gets to see.</p>
+
+<h2 id="arch">4. Architecture: from documents to cited answers</h2>
+
+<div class="diagram">
+<svg viewBox="0 0 720 210" xmlns="http://www.w3.org/2000/svg" font-family="-apple-system,Segoe UI,sans-serif">
+  <defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#888"/></marker></defs>
+  <rect x="10" y="70" width="130" height="60" rx="8" fill="#fff" stroke="#ccc"/>
+  <text x="75" y="95" text-anchor="middle" font-size="12" font-weight="600" fill="#333">Documents</text>
+  <text x="75" y="112" text-anchor="middle" font-size="10" fill="#888">BOMs · ECOs · DWGs</text>
+  <line x1="140" y1="100" x2="165" y2="100" stroke="#888" stroke-width="1.5" marker-end="url(#arr)"/>
+  <rect x="170" y="55" width="130" height="90" rx="8" fill="#fff" stroke="#1565c0" stroke-width="1.5"/>
+  <text x="235" y="82" text-anchor="middle" font-size="12" font-weight="600" fill="#1565c0">Parse + extract</text>
+  <text x="235" y="100" text-anchor="middle" font-size="10" fill="#666">tables → rows</text>
+  <text x="235" y="115" text-anchor="middle" font-size="10" fill="#666">refs → entities</text>
+  <text x="235" y="130" text-anchor="middle" font-size="10" fill="#666">metadata → scope</text>
+  <line x1="300" y1="100" x2="325" y2="100" stroke="#888" stroke-width="1.5" marker-end="url(#arr)"/>
+  <rect x="330" y="55" width="130" height="90" rx="8" fill="#fff" stroke="#1565c0" stroke-width="1.5"/>
+  <text x="395" y="82" text-anchor="middle" font-size="12" font-weight="600" fill="#1565c0">Knowledge graph</text>
+  <text x="395" y="100" text-anchor="middle" font-size="10" fill="#666">entities + edges</text>
+  <text x="395" y="115" text-anchor="middle" font-size="10" fill="#666">revision · effectivity</text>
+  <text x="395" y="130" text-anchor="middle" font-size="10" fill="#666">tenant-scoped</text>
+  <line x1="460" y1="100" x2="485" y2="100" stroke="#888" stroke-width="1.5" marker-end="url(#arr)"/>
+  <rect x="490" y="55" width="130" height="90" rx="8" fill="#fff" stroke="#2e7d32" stroke-width="1.5"/>
+  <text x="555" y="82" text-anchor="middle" font-size="12" font-weight="600" fill="#2e7d32">Hybrid retrieval</text>
+  <text x="555" y="100" text-anchor="middle" font-size="10" fill="#666">BM25 + dense</text>
+  <text x="555" y="115" text-anchor="middle" font-size="10" fill="#666">+ graph expansion</text>
+  <text x="555" y="130" text-anchor="middle" font-size="10" fill="#666">+ rerank</text>
+  <line x1="620" y1="100" x2="645" y2="100" stroke="#888" stroke-width="1.5" marker-end="url(#arr)"/>
+  <rect x="650" y="70" width="60" height="60" rx="8" fill="#fff" stroke="#333"/>
+  <text x="680" y="95" text-anchor="middle" font-size="11" font-weight="600" fill="#333">LLM</text>
+  <text x="680" y="110" text-anchor="middle" font-size="9" fill="#888">cited answer</text>
+</svg>
+</div>
+
+<h3>4.1 Ingestion: structure first, embeddings second</h3>
+
+<p>The critical difference from prose RAG: <strong>parse for structure before you
+embed anything.</strong></p>
+
+<ul>
+  <li><strong>Tables stay tables.</strong> A BOM row becomes a structured record —
+  <code>{parent, child, qty, effectivity, revision}</code> — not a text span.
+  Retrieval over rows is a filter+join, not a similarity search.</li>
+  <li><strong>Identifiers become entities.</strong> Part numbers, drawing numbers,
+  ECO IDs are extracted as entity mentions and resolved to canonical nodes. This
+  is where the graph gets its backbone.</li>
+  <li><strong>Cross-references become edges.</strong> "See DWG-2210," "per note 4,"
+  "supersedes rev B" are parsed into typed relationships at ingest time.</li>
+  <li><strong>Scope metadata is mandatory.</strong> Every chunk, entity, and edge
+  carries its tenant, document set, and effective date. Without this, nothing
+  downstream can answer "current" correctly.</li>
+</ul>
+
+<h3>4.2 Retrieval: three signals, one ranking</h3>
+
+<p>Production retrieval here is hybrid by necessity:</p>
+
+<ol>
+  <li><strong>BM25 (sparse)</strong> — catches exact identifiers: part numbers,
+  drawing numbers, ECO IDs. Dense retrieval is famously bad at these; BM25 is
+  famously good.</li>
+  <li><strong>Dense (embeddings)</strong> — catches semantic questions: "what's
+  the finish spec for exterior parts" matches chunks that never share vocabulary
+  with the query.</li>
+  <li><strong>Graph expansion</strong> — given entities resolved from the query
+  (and from the top sparse/dense hits), traverse 1–2 hops to pull in connected
+  context the text match never surfaced: the ECO that affected the assembly, the
+  revision that superseded the part, the drawing that depicts it.</li>
+</ol>
+
+<p>The fusion step reranks the union. In our reference implementation this is
+BM25 + graph-expansion signals fused into a single ranking — deliberately simple,
+because the interesting failure modes are upstream in extraction, not in the
+ranker.</p>
+
+<h3>4.3 Generation: constrained, cited, scoped</h3>
+
+<p>The final layer reuses the serving patterns from the on-prem field guide:
+guided decoding constrains output to a schema — <code>{answer, citations[],
+confidence}</code> — where each citation is a pointer into the retrieved context,
+not a model-generated reference. The model structurally cannot cite a document
+that wasn't retrieved. Below a confidence threshold, the system escalates rather
+than guesses — in engineering domains, a confident wrong revision reference is
+worse than no answer.</p>
+
+<h2 id="tenancy">5. Multi-tenancy and the graph</h2>
+
+<p>Engineering data is almost always multi-tenant: each customer has their own
+product lines, their own part numbering, their own revision histories. The graph
+inherits the isolation problem of the corpus — a traversal that crosses tenant
+boundaries is a data leak, and a query that can't express tenant scope returns
+another customer's parts.</p>
+
+<p>The working pattern: <strong>tenant scope is a first-class filter applied at
+every traversal step, enforced server-side in the query layer — never trusted
+from the client.</strong> Concretely:</p>
+
+<ul>
+  <li>Every node and edge carries <code>tenant_id</code>; graph queries include
+  it as a mandatory predicate, not an optional filter.</li>
+  <li>Entity resolution is tenant-scoped — "PN-4471" in tenant A and tenant B are
+  different parts; a shared entity namespace silently merges them.</li>
+  <li>For smaller deployments, per-tenant graphs or scoped subgraphs are viable;
+  at scale, a shared graph with mandatory scope predicates is simpler to operate
+  than N isolated graphs — the same trade-off as shared vector stores with
+  metadata filters.</li>
+</ul>
+
+<p>This is the same isolation discipline as multi-tenant RAG generally — the
+graph doesn't change the boundary problem, it just makes the boundary
+<em>structural</em> rather than a post-filter.</p>
+
+<h2 id="limits">6. Honest limits</h2>
+
+<p>GraphRAG for engineering data is not free, and the costs are specific:</p>
+
+<ul>
+  <li><strong>Entity extraction is the bottleneck.</strong> The graph is only as
+  good as the parser that built it. Engineering documents are inconsistent —
+  same part numbered three ways across suppliers, tables in non-standard
+  layouts, scans without text layers. Expect the ingestion pipeline to be the
+  majority of the engineering effort, and expect it to need per-corpus tuning.</li>
+  <li><strong>Graph construction is a batch job, not a stream.</strong> Revisions
+  and ECOs arrive continuously; the graph needs incremental update semantics —
+  a new ECO must update affected edges without rebuilding the corpus.</li>
+  <li><strong>Not every question needs a graph.</strong> "Summarize this spec"
+  is a chunk retrieval problem. Reserve graph expansion for queries that resolve
+  to entities and relationships — unconditional graph traversal adds latency and
+  noise to questions that didn't need it.</li>
+  <li><strong>Stale graphs lie confidently.</strong> If the graph lags the source
+  documents, it will produce well-cited answers about a world that no longer
+  exists. Freshness monitoring is a correctness requirement, not an ops nicety.</li>
+</ul>
+
+<p>The honest summary: GraphRAG earns its complexity when the corpus is
+relational and the questions are multi-hop. For prose corpora with topical
+questions, it's overhead. Engineering data is the former — which is why this is
+one of the few domains where the graph approach isn't a solution looking for a
+problem.</p>
+
+<h2 id="repo">7. Reference implementation</h2>
+
+<p>The architecture above is implemented in
+<a href="https://github.com/signalgap9-del/graphrag-lab">graphrag-lab</a> — a
+zero-dependency Python/SQLite reference: section-aware chunking, entity and
+relation extraction, graph expansion fused with BM25 scoring, and a CLI for
+indexing and querying corpora. It's deliberately minimal — the point is to make
+the mechanism legible, not to ship a platform.</p>
+
+<div class="cta">
+<strong>Repo:</strong> <a href="https://github.com/signalgap9-del/graphrag-lab">github.com/signalgap9-del/graphrag-lab</a><br>
+<strong>Related:</strong> <a href="/writing/tenant-rag.html">Per-tenant RAG isolation</a> ·
+<a href="/writing/onprem-llm.html">Running LLM inference on customer GPUs</a> ·
+<a href="/writing/oss-stack.html">The production AI open-source stack</a> ·
+<a href="/">profile</a>
+</div>
+
+<div class="sources">
+<strong>Sources:</strong>
+<a href="https://github.com/signalgap9-del/graphrag-lab">graphrag-lab</a> ·
+Microsoft GraphRAG research (edge-centric retrieval over knowledge graphs) ·
+<a href="https://arxiv.org/abs/2404.16130">From Local to Global: A Graph RAG Approach to Query-Focused Summarization</a>
+</div>
+</body>
+</html>
