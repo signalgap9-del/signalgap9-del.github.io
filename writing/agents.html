@@ -3,70 +3,168 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Running Autonomous AI Agents Safely — devin-harness | Yunseop Im</title>
-<meta name="description" content="How I built devin-harness: exec guards, session ledgers, and typed review gates for running autonomous AI agents in production repos. By Yunseop Im, Georgia Tech MSCS.">
+<title>Building an Operating System for Autonomous Coding Agents | Yunseop Im</title>
+<meta name="description" content="Deep dive into devin-harness: hook lifecycle guards, deterministic exec/file gates, action ledger, typed LLM review gates, dispatch contract, skills library, and pattern docs for running AI agents safely in production repos.">
 <style>
   * { margin:0; padding:0; box-sizing:border-box; }
   body { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
-         line-height:1.7; color:#1a1a1a; max-width:760px; margin:0 auto; padding:48px 24px 80px; background:#fafafa; }
-  h1 { font-size:1.9em; letter-spacing:-0.02em; line-height:1.25; }
+         line-height:1.75; color:#1a1a1a; max-width:780px; margin:0 auto; padding:48px 24px 80px; background:#fafafa; }
+  h1 { font-size:2em; letter-spacing:-0.02em; line-height:1.25; }
+  h2 { font-size:1.3em; margin:44px 0 14px; letter-spacing:-0.01em; }
+  h3 { font-size:1.05em; margin:26px 0 8px; }
   .meta { color:#888; font-size:0.88em; margin:10px 0 30px; }
-  h2 { font-size:1.2em; margin:34px 0 10px; }
-  p, li { color:#333; font-size:0.95em; }
-  ul { padding-left:22px; }
+  p, li { color:#333; font-size:0.97em; }
+  ul, ol { padding-left:24px; }
+  li { margin:6px 0; }
   code { background:#eee; padding:1px 6px; border-radius:4px; font-size:0.88em;
          font-family:ui-monospace,Menlo,monospace; }
-  pre { background:#1e1e1e; color:#d4d4d4; padding:16px 18px; border-radius:8px;
-        overflow-x:auto; font-size:0.82em; margin:14px 0; }
+  pre { background:#1e1e1e; color:#d4d4d4; padding:18px 20px; border-radius:8px;
+        overflow-x:auto; font-size:0.82em; margin:16px 0; line-height:1.55; }
   pre code { background:none; padding:0; color:inherit; }
   a { color:#1565c0; }
   .back { display:inline-block; margin-bottom:26px; font-size:0.88em; color:#666; }
-  .cta { margin-top:36px; padding:18px 20px; background:#fff; border:1px solid #e0e0e0;
+  .cta { margin-top:48px; padding:20px 22px; background:#fff; border:1px solid #e0e0e0;
          border-radius:10px; }
+  table { border-collapse:collapse; width:100%; margin:16px 0; font-size:0.9em; }
+  th, td { border:1px solid #ddd; padding:8px 12px; text-align:left; }
+  th { background:#f0f0f0; }
 </style>
 </head>
 <body>
 <a class="back" href="/">← yunseop.im</a>
-<h1>Running autonomous AI agents safely in a real repo</h1>
-<p class="meta">Yunseop Im · Georgia Tech MSCS · AI agents / LLM systems</p>
+<h1>Building an operating system for autonomous coding agents</h1>
+<p class="meta">Yunseop Im · Georgia Tech M.S. Computer Science · AI agents / LLM systems engineering</p>
 
-<p>I run AI agents daily on a production multi-tenant SaaS. The hard part was never
-"can the agent write code" — it's <em>trusting it not to break things while nobody's
-watching</em>. This post is about the harness I built for that:
-<a href="https://github.com/signalgap9-del/devin-harness">devin-harness</a>.</p>
+<p>Everyone talks about giving an AI agent a better prompt. After months of running
+autonomous agents on a production multi-tenant SaaS, I'm convinced the prompt is the
+<em>least</em> important layer. What actually determines whether an agent is safe to leave
+unsupervised is the <strong>harness around it</strong> — the deterministic machinery that
+decides what the agent is allowed to do, records what it did, and judges whether the
+result is real.</p>
 
-<h2>The problem: agents fail silently, not loudly</h2>
-<p>Most agent failures aren't crashes. They're <strong>gray failures</strong>: a deploy
-that "succeeded" while a queue stopped draining, an edit that passed review but never
-ran a test, a session that quietly edited a secret file. A diff review catches none of
-these because the damage isn't in the diff — it's in what the agent <em>didn't</em> do.</p>
+<p>This post is a teardown of
+<a href="https://github.com/signalgap9-del/devin-harness">devin-harness</a>, the open-source
+harness I extracted from that production work. It is not a prompt collection and it is
+not a wrapper. It is an operating system for agentic repos: lifecycle hooks, review
+gates, a dispatch contract, a skills library, and a written pattern corpus.</p>
 
-<h2>What the harness actually does</h2>
+<h2>1. The failure mode nobody talks about: gray failures</h2>
+
+<p>Most agent disasters are not crashes. A crash is loud and recoverable. The dangerous
+class is the <strong>gray failure</strong>: the session ends "successfully" while a queue
+silently stops draining, a deploy reports green while a migration never ran, an edit
+touches a secret file and nothing notices. A diff review cannot catch these, because the
+damage is not in the diff — it is in what the agent <em>didn't</em> do.</p>
+
+<p>The design consequence is the core thesis of the harness:</p>
+
+<blockquote>
+A rule enforced at the tool-call boundary beats a rule the agent might remember from a
+prompt.
+</blockquote>
+
+<p>Every component below exists to move a class of failure from "the model might avoid it"
+to "the model cannot do it."</p>
+
+<h2>2. Lifecycle hooks: checkpoints at every transition</h2>
+
+<p>Modern agent harnesses expose lifecycle events — moments where the host can inject
+code around the agent's actions. devin-harness wires five of them:</p>
+
+<table>
+<tr><th>Hook</th><th>Event</th><th>What runs</th></tr>
+<tr><td><code>session-start.mjs</code></td><td>SessionStart</td><td>Dirty-tree detection, stale locks, open review obligations, incident index — the session begins already informed about repo state.</td></tr>
+<tr><td><code>agent-guard.mjs</code></td><td>PreToolUse</td><td>Exec guard: deterministic regex rules that <em>block</em> dangerous shell commands before they run. Sub-50ms, zero model calls.</td></tr>
+<tr><td><code>file-guard.mjs</code></td><td>PreToolUse (edit/write)</td><td>Blocks writes to secret files, migration files, and runtime-state files at the boundary.</td></tr>
+<tr><td><code>agent-ledger.mjs</code></td><td>PostToolUse</td><td>Appends every tool call — secrets redacted — to <code>action-log.jsonl</code>. The session becomes auditable as a trace, not just a diff.</td></tr>
+<tr><td><code>prompt-guard.mjs</code></td><td>UserPromptSubmit</td><td>Detects questions that require external knowledge and injects a mandatory source-verification instruction.</td></tr>
+<tr><td><code>claim-guard.mjs</code></td><td>Stop</td><td>If files changed but no test ran afterward, the session ends with a loud "unverified" advisory instead of a silent green.</td></tr>
+</table>
+
+<p>Two design choices matter here. First, the guards are <strong>deterministic</strong>:
+regex and path rules, not model judgments. They cost microseconds and cannot be
+persuaded. Second, they fail <strong>closed</strong> — a blocked command produces an
+error the agent must route around legitimately, not a warning it can ignore.</p>
+
+<h2>3. The review gate stack: from diff to judgment</h2>
+
+<p>Prevention is only half the system. The other half is <em>judgment</em> — deciding
+whether what the agent produced is actually good. The gate stack runs in escalating
+cost order:</p>
+
+<ol>
+<li><strong><code>gate.mjs</code></strong> — deterministic suppression and secret scanning
+across the diff. Free, instant, catches the mechanical failures.</li>
+<li><strong><code>dep-audit.mjs</code></strong> — npm supply-chain audit on dependency
+changes. Catches the "agent added a typosquatted package" failure class.</li>
+<li><strong><code>jev-gate.mjs</code></strong> — a typed LLM judgment over the diff:
+14 typed constraints, plan-drift aware, backed by a persistent <code>state.json</code>
+so findings the author already resolved never re-block. This is the interesting piece:
+the judge has <em>memory</em>, which turns review from a stateless opinion into a
+tracked obligation.</li>
+<li><strong><code>predeploy.example.mjs</code></strong> — the deploy-gate skeleton that
+composes the above into a promotion check.</li>
+</ol>
+
+<p>The pattern worth stealing: <strong>cheap deterministic checks first, expensive model
+judgment last, and persistent state so judgment accumulates instead of repeating.</strong></p>
+
+<h2>4. The dispatch contract: agents that can spawn agents</h2>
+
+<p><code>ops/dispatch/</code> contains <code>devin-session.mjs</code> and
+<code>dispatch-rules.md</code> — a contract for delegating work to autonomous sessions.
+This is where the harness stops being "guardrails for one agent" and becomes an
+orchestration layer: rules for when a task is dispatchable, what context the child
+session receives, and how results are verified before merging.</p>
+
+<h2>5. Skills and the knowledge corpus</h2>
+
+<p>The repo ships eleven domain skills under <code>.devin/skills/</code> — SEO, ads-ops,
+copywriting, landing pages, CRO, ICP research, audience research, quality judging, and
+<code>verify-with-sources</code>, which forces primary-source research before answering
+external-knowledge questions. Skills are the harness's answer to "the agent doesn't know
+my domain": packaged, versioned expertise the agent auto-invokes.</p>
+
+<p>Alongside them sits <code>docs/</code> — roughly thirty pattern documents covering
+agent orchestration, agent memory, agent perception, context engineering, decision
+models, observability, on-call playbooks, release engineering, security-and-CI,
+testing strategy, OSS adoption, and harness-vs-labs comparisons. The skills teach the
+agent <em>how to do a task</em>; the docs teach it <em>how this organization thinks</em>.</p>
+
+<h2>6. Templates: the doctrine as files</h2>
+
+<p><code>templates/</code> ships <code>AGENTS.root.template.md</code>,
+<code>AGENTS.subtree.template.md</code>, an ADR template, and an incident template —
+the organizational memory of how work gets specified, decided, and reviewed. Combined
+with <code>AGENTS.example.md</code> (the multi-tenant data rules, gray-failure doctrine,
+secret registry, deploy-gate rule), the harness encodes <em>operating doctrine</em>, not
+just tooling.</p>
+
+<h2>7. Why this architecture wins</h2>
+
+<p>Three properties make it hold up in production:</p>
+
 <ul>
-  <li><strong>Exec guard</strong> — a pre-tool hook that blocks dangerous shell commands
-  deterministically (regex, &lt;50ms, no model call). Cheap enough to run on every call.</li>
-  <li><strong>File guard</strong> — same idea for edits: blocks secret files, migration
-  edits, and runtime-state changes before they happen.</li>
-  <li><strong>Session ledger</strong> — every tool call appended to
-  <code>action-log.jsonl</code> (secrets redacted), so a reviewer can audit the whole
-  session, not just the final diff.</li>
-  <li><strong>Claim guard</strong> — if files changed but no test ran afterward, the
-  session ends with a loud "unverified" advisory instead of a green checkmark.</li>
-  <li><strong>Typed review gates</strong> — deterministic secret/suppression scan →
-  npm supply-chain audit → a typed LLM judgment over the diff with persistent state,
-  so resolved findings never re-block.</li>
+<li><strong>Deterministic before stochastic.</strong> Every check that can be a regex is a
+regex. Model calls are reserved for judgment calls that genuinely need them.</li>
+<li><strong>Auditability by default.</strong> The action ledger means a human can review
+the session, not just the output — the difference between trusting an agent and
+<em>verifying</em> one.</li>
+<li><strong>State that accumulates.</strong> Persistent gate state, incident templates,
+and layered AGENTS.md files mean the system gets smarter about <em>this repo</em> over
+time instead of starting cold every session.</li>
 </ul>
 
-<h2>Why this matters beyond one repo</h2>
-<p>The pattern generalizes: <em>guardrails at the tool-call boundary &gt; prompts asking
-the agent to be careful</em>. A rule the agent can't bypass beats a rule it might
-ignore. Everything in the repo is MIT-licensed and drop-in:
-<code>node setup.mjs /path/to/your/repo</code>.</p>
+<p>The repo is MIT-licensed and installs in one command:
+<code>node setup.mjs /path/to/your/repo</code>. The bet I'm making is that the next
+generation of engineering leverage doesn't come from better models alone — it comes
+from better <em>harnesses</em> around them.</p>
 
 <div class="cta">
-  <strong>Repo:</strong> <a href="https://github.com/signalgap9-del/devin-harness">github.com/signalgap9-del/devin-harness</a><br>
-  <strong>More:</strong> <a href="/">profile &amp; projects</a> ·
-  <a href="https://www.linkedin.com/in/yunseop-i-207a7215a/">LinkedIn</a>
+<strong>Repo:</strong> <a href="https://github.com/signalgap9-del/devin-harness">github.com/signalgap9-del/devin-harness</a><br>
+<strong>Related:</strong> <a href="/writing/freightscaler.html">How I built a real-time freight risk SaaS</a> ·
+<a href="/">profile &amp; projects</a> ·
+<a href="https://www.linkedin.com/in/yunseop-i-207a7215a/">LinkedIn</a>
 </div>
 
 </body>
