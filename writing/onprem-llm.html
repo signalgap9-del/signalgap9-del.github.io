@@ -3,134 +3,427 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Running LLM Inference on Customer GPUs — What On-Prem Serving Actually Takes | Yunseop Im</title>
-<meta name="description" content="Field notes from running production LLM inference on customer-owned GPUs: SGLang serving, continuous batching, KV-cache tuning, guided decoding for citation-grounded output, and the operational constraints that decide whether on-prem AI is viable.">
-<meta name="keywords" content="on-prem LLM serving, SGLang, GPU inference, self-hosted LLM, guided decoding, KV cache, continuous batching, LLM infrastructure, enterprise AI, on-premise AI">
+<title>Running LLM Inference on Customer GPUs — An On-Prem Serving Field Guide | Yunseop Im</title>
+<meta name="description" content="A production field guide to self-hosted LLM serving: vLLM vs SGLang internals (PagedAttention, RadixAttention, continuous batching), quantization trade-offs, guided decoding with xgrammar JSON schemas, prefix caching for RAG workloads, and the operational realities of running inference on hardware you didn't choose.">
+<meta name="keywords" content="on-prem LLM serving, self-hosted LLM, vLLM, SGLang, PagedAttention, RadixAttention, continuous batching, guided decoding, xgrammar, JSON schema constrained decoding, KV cache, AWQ FP8 quantization, prefix caching, LLM inference infrastructure, enterprise AI, air-gapped LLM">
 <style>
   * { margin:0; padding:0; box-sizing:border-box; }
   body { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
          line-height:1.75; color:#1a1a1a; max-width:780px; margin:0 auto; padding:48px 24px 80px; background:#fafafa; }
   h1 { font-size:2em; letter-spacing:-0.02em; line-height:1.25; }
-  h2 { font-size:1.25em; margin:40px 0 12px; }
+  h2 { font-size:1.3em; margin:48px 0 14px; letter-spacing:-0.01em; }
+  h3 { font-size:1.05em; margin:28px 0 8px; }
   .meta { color:#888; font-size:0.85em; margin:10px 0 26px; }
   p, li { color:#333; font-size:0.95em; }
   ul, ol { padding-left:24px; }
   li { margin:6px 0; }
-  code { background:#eee; padding:1px 6px; border-radius:4px; font-size:0.88em; font-family:ui-monospace,Menlo,monospace; }
+  code { background:#eee; padding:1px 6px; border-radius:4px; font-size:0.86em; font-family:ui-monospace,Menlo,monospace; }
+  pre { background:#1e1e1e; color:#d4d4d4; padding:18px 20px; border-radius:8px;
+        overflow-x:auto; font-size:0.82em; line-height:1.6; margin:16px 0; }
+  pre code { background:none; padding:0; color:inherit; font-size:inherit; }
   a { color:#1565c0; }
   .back { display:inline-block; margin-bottom:24px; font-size:0.88em; color:#666; }
-  .cta { margin-top:44px; padding:18px 22px; background:#fff; border:1px solid #e0e0e0; border-radius:10px; font-size:0.92em; }
+  .cta { margin-top:48px; padding:18px 22px; background:#fff; border:1px solid #e0e0e0; border-radius:10px; font-size:0.92em; }
   blockquote { border-left:3px solid #ddd; padding:4px 0 4px 16px; color:#555; margin:14px 0; }
+  .toc { background:#fff; border:1px solid #e0e0e0; border-radius:10px; padding:18px 22px; margin:24px 0; font-size:0.9em; }
+  .toc strong { display:block; margin-bottom:8px; }
+  .toc a { display:block; padding:2px 0; color:#444; text-decoration:none; }
+  .toc a:hover { color:#1565c0; }
+  .sources { margin-top:36px; font-size:0.85em; color:#666; }
+  .sources a { color:#888; }
 </style>
 </head>
 <body>
 <a class="back" href="/writing/">← Writing</a>
-<h1>Running LLM inference on customer GPUs — what on-prem serving actually takes</h1>
-<p class="meta">Yunseop Im · Software engineer, AI engineering · M.S. CS, Georgia Tech · 2026</p>
+<h1>Running LLM inference on customer GPUs — an on-prem serving field guide</h1>
+<p class="meta">Yunseop Im · Software engineer · M.S. CS, Georgia Tech · 2026 · ~25 min read</p>
 
-<p>"Just call the API" works until it doesn't. For enterprise customers with
-engineering drawings, supplier contracts, and unreleased product data, sending
-prompts to a third-party LLM endpoint is a non-starter — the data legally can't
-leave the building. That constraint turns "add an AI feature" into an
-infrastructure problem: <strong>you now own the GPU, the serving stack, and the
-failure modes.</strong></p>
+<div class="toc">
+<strong>Contents</strong>
+<a href="#why">1. Why "just call the API" fails in enterprise</a>
+<a href="#stack">2. The serving stack: vLLM and SGLang under the hood</a>
+<a href="#hardware">3. Hardware reality: fitting the model into GPUs you didn't choose</a>
+<a href="#guided">4. Guided decoding: making structured output actually reliable</a>
+<a href="#prefix">5. Prefix caching: the feature that decides RAG economics</a>
+<a href="#quality">6. Quality as a regression surface</a>
+<a href="#ops">7. Operations you didn't sign up for</a>
+<a href="#honest">8. When on-prem doesn't make sense</a>
+</div>
 
-<p>This is a field guide to what that actually involves, from running production
-inference on customer-owned hardware. The stack: <strong>SGLang serving Gemma-class
-models</strong>, continuous batching, KV-cache tuning, and guided decoding for
-structured output. The lessons are mostly about constraints, not benchmarks.</p>
+<h2 id="why">1. Why "just call the API" fails in enterprise</h2>
 
-<h2>Constraint 1: you don't choose the hardware</h2>
+<p>Every AI feature demo eventually hits the same wall. The product works against
+OpenAI or Gemini, the demo lands, and then the customer's security review arrives:
+engineering drawings, supplier contracts, unreleased product data — none of it
+can be sent to a third-party endpoint. Not "shouldn't," <em>can't</em>. The data
+residency constraint is contractual, sometimes regulatory, and non-negotiable.</p>
 
-<p>Cloud inference assumes you pick the GPU. On-prem, the customer already bought
-it — maybe last year, maybe a mixed fleet, maybe whatever was cheapest. Your
-serving stack has to degrade gracefully across SKUs you didn't select: different
-memory ceilings, different interconnects, different thermal envelopes. The first
-design question isn't "what's the fastest config" — it's "what's the slowest GPU
-we have to support, and does the model even fit?"</p>
-
-<p>Practical consequence: quantization isn't optional, it's the baseline. A model
-that fits comfortably on an A100 may not fit on the customer's RTX card at all,
-and the fallback path has to be decided before launch, not during the first
-OOM at 2am customer time.</p>
-
-<h2>Constraint 2: serving is a systems problem, not a model problem</h2>
-
-<p>SGLang (and vLLM) earn their complexity here. The features that matter in
-production aren't the headline ones:</p>
+<p>At that point "add an LLM feature" silently becomes "operate an LLM
+inference service." You now own:</p>
 
 <ul>
-  <li><strong>Continuous batching</strong> — requests arrive unpredictably; without
-  batching, GPU utilization collapses and latency variance explodes. This is the
-  difference between "works in a notebook" and "works for 40 concurrent users."</li>
-  <li><strong>KV-cache management</strong> — the cache is where memory pressure
-  actually lives. Tuning eviction and allocation policy is most of the serving
-  work; the model weights are the easy part.</li>
-  <li><strong>Guided decoding</strong> — constraining output to a schema or
-  grammar <em>during</em> inference, not after. For citation-grounded answers —
-  every response must reference the document it came from — this is what makes
-  structured output reliable instead of "usually parses."</li>
+  <li><strong>The GPUs</strong> — hardware the customer bought, possibly last
+  year, possibly a mixed fleet of SKUs you didn't select.</li>
+  <li><strong>The serving stack</strong> — vLLM, SGLang, or TGI: batching,
+  scheduling, memory management, and their failure modes.</li>
+  <li><strong>The quality surface</strong> — a frozen model version whose outputs
+  you must regression-test forever, because there's no provider silently
+  improving it underneath you.</li>
+  <li><strong>The pager</strong> — no provider status page. When inference
+  degrades at 2am customer time, it's your problem.</li>
 </ul>
 
-<p>The counterintuitive part: most of the engineering effort goes into the
-<em>unsexy</em> layer — request queuing, timeout behavior, graceful degradation
-when the GPU is saturated — not into model selection.</p>
+<p>This guide is what that ownership actually looks like in production — the
+mechanisms that matter, the configuration that decides whether it works, and
+the places where the cloud-API intuition actively misleads you.</p>
 
-<h2>Constraint 3: quality is a regression problem</h2>
+<h2 id="stack">2. The serving stack: vLLM and SGLang under the hood</h2>
 
-<p>A cloud model gets updated silently; your on-prem model is frozen at whatever
-version you deployed. That means quality isn't a one-time evaluation — it's a
-<em>regression surface</em>. The working setup we use:</p>
+<p>Both vLLM and SGLang expose an OpenAI-compatible API, so at the application
+layer they look interchangeable. They aren't — the differences are in how they
+manage the two scarcest resources in inference: <strong>GPU memory</strong> and
+<strong>attention computation</strong>.</p>
+
+<h3>Continuous batching: the baseline everyone has</h3>
+
+<p>Naive inference processes one request at a time — generate all tokens for
+request A, then request B. GPU utilization collapses because generation is
+memory-bandwidth-bound: you're shuffling weights for a handful of tokens at a
+time. Continuous (iteration-level) batching re-schedules at <em>every decode
+step</em>: finished requests leave the batch, new requests join mid-flight, and
+the GPU stays saturated as long as the queue is non-empty.</p>
+
+<p>This is table stakes in both engines — it's why a single A100-class card can
+serve dozens of concurrent users instead of one. If a serving stack doesn't do
+this, it's a demo engine, not a production engine.</p>
+
+<h3>PagedAttention (vLLM): memory management for the KV cache</h3>
+
+<p>The KV cache — stored attention keys and values for every generated token —
+grows linearly with sequence length and is the dominant memory consumer during
+serving. vLLM's core contribution is <strong>PagedAttention</strong>: it manages
+the KV cache the way an OS manages virtual memory. Cache blocks are fixed-size
+pages that can be non-contiguous in physical memory, allocated on demand, and
+freed the moment a sequence finishes.</p>
+
+<p>The naive alternative — pre-allocating a contiguous buffer sized for the
+model's maximum context per request — wastes 60–80% of KV memory on
+real-world traffic where most sequences are far shorter than the max. Paging
+turns that waste into usable batch capacity, which is why vLLM's throughput
+numbers became the reference point the whole field measured against.</p>
+
+<h3>RadixAttention (SGLang): prefix caching as a first-class structure</h3>
+
+<p>SGLang attacks the same problem from a different angle. Its
+<strong>RadixAttention</strong> stores the KV cache in a radix tree keyed by token
+prefixes: when a new request arrives, the engine finds the longest cached
+prefix and reuses its KV state instead of recomputing it.</p>
+
+<p>Why this matters enormously for RAG and agent workloads: every request in a
+retrieval system shares a long, identical prefix — system prompt, tool
+definitions, few-shot examples — before the retrieved context diverges. With
+RadixAttention, that shared prefix is computed once and reused across
+thousands of requests. On our workloads, prefix caching routinely cuts
+time-to-first-token and prefill cost by an order of magnitude for the shared
+portion of the prompt. It's the difference between RAG being economically
+viable on-prem and being a latency/cost disaster.</p>
+
+<p>vLLM has since added its own automatic prefix caching that achieves similar
+effects, so the practical takeaway is: <strong>check that prefix caching is
+enabled and verify it's actually hitting</strong> — a misconfigured cache
+silently falls back to full prefill on every request, and nothing errors.</p>
+
+<h3>The decision</h3>
+
+<table style="width:100%; border-collapse:collapse; font-size:0.9em; margin:16px 0;">
+  <tr style="border-bottom:1px solid #ddd; text-align:left;"><th style="padding:8px 12px 8px 0;"></th><th style="padding:8px 12px 8px 0;">vLLM</th><th style="padding:8px 0;">SGLang</th></tr>
+  <tr style="border-bottom:1px solid #eee;"><td style="padding:8px 12px 8px 0; color:#555;">Memory model</td><td style="padding:8px 12px 8px 0;">PagedAttention — paged KV blocks</td><td style="padding:8px 0;">RadixAttention — prefix tree reuse</td></tr>
+  <tr style="border-bottom:1px solid #eee;"><td style="padding:8px 12px 8px 0; color:#555;">Prefix reuse</td><td style="padding:8px 12px 8px 0;">Automatic prefix caching (v1)</td><td style="padding:8px 0;">Radix tree, per-request longest-match</td></tr>
+  <tr style="border-bottom:1px solid #eee;"><td style="padding:8px 12px 8px 0; color:#555;">Structured output</td><td style="padding:8px 12px 8px 0;">xgrammar / outlines / guidance / lm-format-enforcer</td><td style="padding:8px 0;">xgrammar backend, OpenAI <code>response_format</code></td></tr>
+  <tr style="border-bottom:1px solid #eee;"><td style="padding:8px 12px 8px 0; color:#555;">Distributed</td><td style="padding:8px 12px 8px 0;">TP/PP/DP, well-trodden</td><td style="padding:8px 0;">TP/DP/EP, strong on large clusters</td></tr>
+  <tr><td style="padding:8px 12px 8px 0; color:#555;">Ecosystem</td><td style="padding:8px 12px 8px 0;">Largest — most examples, quantization coverage</td><td style="padding:8px 0;">Fast-moving; strong on agentic/RAG patterns</td></tr>
+</table>
+
+<p>In practice: for a first deployment, pick whichever your team can operate —
+both are OpenAI-compatible, so the application doesn't care. For RAG-heavy
+workloads, SGLang's radix caching is the more interesting bet; for maximum
+quantization flexibility and community support, vLLM is the safer default.</p>
+
+<h2 id="hardware">3. Hardware reality: fitting the model into GPUs you didn't choose</h2>
+
+<p>Cloud inference assumes you pick the hardware. On-prem inverts that: the
+customer already owns the GPUs — last year's purchase, a mixed fleet, whatever
+was cheapest at procurement time. Your serving configuration has to degrade
+gracefully across SKUs you didn't select.</p>
+
+<h3>The memory budget equation</h3>
+
+<p>What actually has to fit in VRAM:</p>
+
+<pre><code>VRAM required ≈ model weights + KV cache + activation overhead</code></pre>
+
+<p>Weights are the easy part — a 8B model at FP16 is ~16GB, at 4-bit AWQ ~5GB.
+The KV cache is the variable that bites you: it scales with <em>batch size ×
+context length</em>. A 32k-token context at batch 32 across a 70B model can
+easily exceed the weights themselves. This is why "the model fits" is never
+the right question — "the model plus realistic KV cache at our target
+concurrency fits" is.</p>
+
+<h3>Quantization: not optional, the baseline</h3>
+
+<p>On customer hardware, quantization stops being an optimization and becomes a
+launch requirement. The practical options, in order of maturity:</p>
 
 <ul>
-  <li><strong>Golden-set regression tests</strong> — a fixed set of real queries
-  with expected citation behavior, run on every config change. If guided decoding
-  parameters shift, the tests catch it before users do.</li>
-  <li><strong>Faithfulness checks</strong> — answers are scored against their
-  retrieved sources, not just for fluency. A confident wrong answer with a fake
-  citation is worse than no answer.</li>
-  <li><strong>Human handoff</strong> — below a confidence threshold, the system
-  escalates instead of guessing. In engineering domains where a wrong answer
-  about a part revision can cause a real-world error, "I don't know" is a
-  feature.</li>
+  <li><strong>AWQ / GPTQ (4-bit)</strong> — mature, well-supported in both
+  engines, quality loss usually acceptable for instruction-tuned models.
+  This is the workhorse for consumer-grade and older datacenter GPUs.</li>
+  <li><strong>FP8</strong> — on Hopper-class hardware (H100), FP8 weights +
+  FP8 KV cache roughly doubles effective capacity with minimal quality loss.
+  If the customer has H100s, this is the configuration to reach for first.</li>
+  <li><strong>FP16/BF16</strong> — only if the model genuinely fits with headroom
+  for KV cache at your concurrency target. Don't default to it.</li>
 </ul>
 
-<h2>Constraint 4: operations you didn't sign up for</h2>
+<p>The failure mode to avoid: discovering at deployment that the model fits in
+weights but OOMs the moment real traffic creates KV pressure. Benchmark with
+<em>your</em> context lengths and <em>your</em> batch sizes, not the model card's
+headline numbers.</p>
 
-<p>On-prem serving means you inherit the customer's operational reality:</p>
+<h3>Multi-GPU serving</h3>
+
+<p>When one card isn't enough, tensor parallelism (<code>--tp N</code>) splits
+each layer across N GPUs. It works, but it demands fast interconnect — NVLink
+within a node is fine, PCIe-only multi-GPU setups will bottleneck at the
+all-reduce operations. A realistic rule: <strong>prefer a smaller quantized
+model on one GPU over a bigger model stretched across a slow interconnect.</strong>
+Latency under TP scales with communication, and for interactive workloads TTFT
+matters more than peak throughput.</p>
+
+<h2 id="guided">4. Guided decoding: making structured output actually reliable</h2>
+
+<p>This is the section most "LLM feature" writeups skip, and it's where
+production systems live or die. In a document-grounded product, the model
+must return not just text but <em>citations tied to retrieved sources</em>,
+<em>fields that fit a schema</em>, <em>output that downstream code can consume
+without a parser that apologizes.</em></p>
+
+<p>"Prompt the model to return JSON" gives you JSON-shaped text most of the
+time. Production needs a guarantee. That's what <strong>guided decoding</strong>
+provides: constraints applied <em>during</em> generation, at the token level, so
+invalid output is never produced rather than filtered afterward.</p>
+
+<h3>How it works mechanically</h3>
+
+<p>At each decode step, the engine computes logits over the vocabulary, then a
+structured-output backend masks out every token that would violate the
+constraint. The model literally cannot emit a token that breaks the schema.
+vLLM supports several backends — <strong>xgrammar</strong> (the default and
+fastest, compiles JSON schema/regex/EBNF to a pushdown automaton),
+<strong>outlines</strong>, <strong>guidance</strong>, and
+<strong>lm-format-enforcer</strong> — and the backend handles JSON schema,
+regex, context-free grammars, and enum choices.</p>
+
+<h3>What this looks like in code</h3>
+
+<p>Against a vLLM or SGLang OpenAI-compatible endpoint, constrained generation
+is just a request parameter — no post-processing needed:</p>
+
+<pre><code>response = client.chat.completions.create(
+    model="customer-model",
+    messages=[{"role": "user", "content": prompt}],
+    temperature=0,
+    response_format={
+        "type": "json_schema",
+        "json_schema": {
+            "name": "grounded_answer",
+            "schema": {
+                "type": "object",
+                "properties": {
+                    "answer": {"type": "string"},
+                    "citations": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "doc_id": {"type": "string"},
+                                "quote": {"type": "string"}
+                            },
+                            "required": ["doc_id", "quote"]
+                        }
+                    },
+                    "confidence": {"type": "number"}
+                },
+                "required": ["answer", "citations", "confidence"]
+            },
+            "strict": True
+        }
+    }
+)</code></pre>
+
+<p>The <code>strict: true</code> flag matters: it makes the backend enforce the
+schema as a hard constraint rather than a suggestion. For citation grounding
+specifically, we constrain the model to emit <code>doc_id</code> references
+from the retrieved set — the citation isn't the model's memory of a source,
+it's a pointer the grammar forced it to populate. That converts "the model
+usually cites correctly" into "the model structurally cannot cite a document
+that wasn't in context" — a much stronger property for an engineering domain
+where a fabricated part-revision reference is a real-world error.</p>
+
+<p>vLLM's Python API exposes the same machinery more directly via
+<code>StructuredOutputsParams</code> — choice, regex, JSON schema, or raw
+grammar — which is useful when you want constraints that don't map cleanly
+onto OpenAI's <code>response_format</code> (e.g., a custom EBNF grammar for a
+domain-specific citation format).</p>
+
+<h3>The caveat nobody mentions</h3>
+
+<p>Guided decoding has a cost: constrained tokens can fight the model's learned
+distribution, occasionally producing lower-quality text inside the valid
+structure. And overly complex schemas increase compile/masking overhead per
+step. The practical guidance: constrain the <em>shape</em> (JSON schema,
+required fields, enums) aggressively, but leave the <em>content</em> of string
+fields free — don't grammar-constrain natural language answers unless you
+have a measured reason to.</p>
+
+<h2 id="prefix">5. Prefix caching: the feature that decides RAG economics</h2>
+
+<p>Retrieval-augmented generation has a structural inefficiency: the system
+prompt, tool definitions, domain instructions, and few-shot examples are
+<em>identical across every request</em> — often 2–8k tokens — while only the
+retrieved documents and user query differ. Naive serving recomputes the KV
+state for that shared prefix on every single request.</p>
+
+<p>Prefix caching eliminates this. The engine caches KV state keyed by token
+prefix; identical prefixes hit the cache and skip prefill entirely. On
+workloads where the shared prefix dominates prompt length — which describes
+nearly every production RAG deployment — this is the single highest-leverage
+serving feature you can enable.</p>
+
+<h3>Making it actually work</h3>
 
 <ul>
-  <li><strong>Observability is yours</strong> — no provider dashboard. You need
-  your own metrics for queue depth, time-to-first-token, cache hit rates, and
-  error rates, plus alerting that pages someone who can actually fix it.</li>
-  <li><strong>Updates are deliberate</strong> — model upgrades, driver updates,
-  and serving-stack updates all require regression runs. "Just redeploy" is a
-  change-management process.</li>
-  <li><strong>The network is hostile</strong> — customer firewalls, proxies, and
-  air-gapped segments are the norm, not the exception. Telemetry that assumes
-  outbound internet access silently fails.</li>
+  <li><strong>Stabilize the prefix.</strong> Cache hits require token-identical
+  prefixes. A timestamp, a rotating few-shot example, or a per-request nonce
+  anywhere in the system prompt silently destroys hit rates. Put all
+  per-request content (retrieved docs, user query, conversation history)
+  <em>after</em> the stable prefix — cache is prefix-based, so anything before
+  the divergence point is reusable, anything after isn't.</li>
+  <li><strong>Verify hits, don't assume them.</strong> Both engines expose
+  prefix-cache metrics (hit rate, cached tokens). A dashboard showing
+  <code>prefix_cache_hit_rate</code> near zero means your prefix isn't stable —
+  find the nondeterminism before tuning anything else.</li>
+  <li><strong>Size the cache to your working set.</strong> The cache is finite
+  GPU memory. If your stable prefixes exceed cache capacity, you'll see thrash
+  — hits followed by evictions followed by misses. This is a capacity-planning
+  problem, not a tuning problem.</li>
 </ul>
 
-<h2>The honest summary</h2>
+<p>RadixAttention (SGLang) does longest-prefix matching in a radix tree, so it
+handles <em>partial</em> prefix overlap — two requests sharing the first 4k of
+a 6k-token prefix still reuse 4k. vLLM's automatic prefix caching works at
+block granularity with similar effect. For multi-tenant RAG where different
+tenants share the system prompt but diverge on retrieved content, this
+partial-match capability is what makes tenant isolation and cache efficiency
+compatible rather than opposed.</p>
 
-<blockquote>
-On-prem LLM serving isn't "deploy a model." It's operating a production
-inference service under hardware constraints you didn't choose, quality
-regressions you have to test for, and an operational surface you fully own.
-The teams that succeed treat it like infrastructure — with the same rigor as
-the databases and queues around it.
-</blockquote>
+<h2 id="quality">6. Quality as a regression surface</h2>
 
-<p>The leverage isn't in picking the right model — it's in the boring layers:
-serving configuration, structured output guarantees, regression testing, and
-knowing when to say "I don't know." Those are the parts that decide whether
-on-prem AI is a product or a demo.</p>
+<p>Here's the asymmetry that catches teams: a cloud model improves silently
+underneath you; your on-prem model is frozen at whatever checkpoint you
+deployed. Every config change — quantization level, guided-decoding grammar,
+temperature, context-length truncation — is a potential quality regression
+that no provider will warn you about.</p>
+
+<p>The working setup:</p>
+
+<ul>
+  <li><strong>Golden-set regression tests.</strong> A fixed corpus of real
+  queries — the awkward ones, the ambiguous ones, the ones that broke last
+  quarter — with expected properties (must cite doc X, must refuse, must
+  produce schema-valid output). Run on every config change, same as you run
+  unit tests on code. Cheap to build, catches the regressions that matter.</li>
+  <li><strong>Faithfulness, not fluency.</strong> Score answers against their
+  retrieved sources — does the answer actually follow from the cited chunks?
+  A confident wrong answer with a fabricated citation is categorically worse
+  than no answer. In engineering domains where a wrong revision reference
+  ships to a factory floor, this is the metric that matters.</li>
+  <li><strong>Confidence gating.</strong> Below a threshold, escalate to human
+  review instead of generating. Guided decoding gives you structured
+  confidence signals; use them. "I don't know" is a feature in high-stakes
+  domains.</li>
+  <li><strong>Version everything.</strong> Model checkpoint, serving engine
+  version, quantization method, grammar definitions — all pinned and
+  recorded. When a customer asks "why did the answer change after the update,"
+  you need to reproduce the exact serving config that produced it.</li>
+</ul>
+
+<h2 id="ops">7. Operations you didn't sign up for</h2>
+
+<p>The cloud API hid an operational surface that on-prem hands back to you:</p>
+
+<ul>
+  <li><strong>You are the observability stack.</strong> No provider dashboard.
+  You need metrics for queue depth, time-to-first-token, inter-token latency,
+  prefix-cache hit rate, KV-cache utilization, error rates — plus alerting
+  routed to someone who can actually fix it. Both engines expose Prometheus
+  endpoints; wire them to your existing monitoring rather than inventing
+  parallel observability.</li>
+  <li><strong>Updates are change-managed.</strong> Model upgrade, engine
+  upgrade, driver update — each is a regression surface requiring golden-set
+  runs. "Just redeploy" is a documented process with rollback criteria, not
+  a kubectl command.</li>
+  <li><strong>The network is hostile.</strong> Customer firewalls, proxies,
+  air-gapped segments are the norm. Telemetry pipelines that assume outbound
+  internet access silently fail — the deployment works, the monitoring
+  doesn't, and you find out during the incident.</li>
+  <li><strong>Capacity is a forecast.</strong> Cloud autoscaling doesn't exist
+  on-prem. If traffic doubles, you need a pre-agreed answer: queue, degrade,
+  or provision more GPUs on a lead time measured in weeks.</li>
+</ul>
+
+<h2 id="honest">8. When on-prem doesn't make sense</h2>
+
+<p>The contrarian section, because the honest answer matters more than the
+elegant one. On-prem LLM serving is the right answer when data residency is a
+hard constraint — regulated industries, defense-adjacent work, IP-sensitive
+engineering data. It's the <em>wrong</em> answer when:</p>
+
+<ul>
+  <li><strong>The constraint is preference, not requirement.</strong> If the
+  data could legally go to an API with a zero-retention agreement, the
+  operational overhead of self-hosting rarely pays for itself at small scale.</li>
+  <li><strong>Traffic is spiky and unpredictable.</strong> You can't autoscale
+  GPUs you don't have. Cloud's elasticity is worth real money for bursty
+  workloads.</li>
+  <li><strong>The model must be frontier.</strong> On-prem economics favor
+  smaller, specialized models (7B–70B class, quantized). If the product
+  genuinely needs GPT-4-class reasoning, on-prem costs exceed the API by an
+  order of magnitude.</li>
+  <li><strong>There's no one to operate it.</strong> This is an inference
+  service, not a model download. If nobody owns serving config, quality
+  regression, and the pager, it will work in the demo and fail in production.</li>
+</ul>
+
+<p>The teams that make on-prem work treat it like the infrastructure it is —
+with the same operational rigor as the databases and queues around it. The
+leverage isn't in model selection; it's in the unglamorous layers: serving
+configuration, prefix-cache economics, structured output guarantees, and
+knowing when to say "I don't know."</p>
 
 <div class="cta">
-<strong>Related:</strong> <a href="/writing/oss-stack.html">The production AI open-source stack</a> ·
-<a href="/writing/tenant-rag.html">Per-tenant RAG isolation</a> ·
-<a href="/">profile</a> ·
-<a href="https://www.linkedin.com/in/yunseop-i-207a7215a/">LinkedIn</a>
+<strong>Related:</strong> <a href="/writing/tenant-rag.html">Per-tenant RAG isolation</a> ·
+<a href="/writing/oss-stack.html">The production AI open-source stack</a> ·
+<a href="/writing/agents.html">Running autonomous AI agents safely</a> ·
+<a href="/">profile</a>
+</div>
+
+<div class="sources">
+<strong>Sources:</strong>
+<a href="https://docs.vllm.ai/en/stable/">vLLM documentation</a> ·
+<a href="https://github.com/sgl-project/sglang">SGLang repository</a> ·
+<a href="https://arxiv.org/abs/2309.06180">Efficient Memory Management for LLM Serving with PagedAttention (vLLM paper)</a> ·
+<a href="https://github.com/sgl-project/sglang/tree/main/python/sglang/srt/mem_cache">SGLang RadixAttention / unified cache</a>
 </div>
 </body>
 </html>
