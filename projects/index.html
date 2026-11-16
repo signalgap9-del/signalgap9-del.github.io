@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Projects — Yunseop Im | AI Agents, GraphRAG, Full-Stack SaaS</title>
+<meta name="description" content="Case studies by Yunseop Im: graphrag-lab (GraphRAG retrieval), devin-harness (agentic repo operating system), FreightScaler (full-stack freight risk SaaS).">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+         line-height:1.7; color:#1a1a1a; max-width:840px; margin:0 auto; padding:48px 24px 80px; background:#fafafa; }
+  h1 { font-size:2em; letter-spacing:-0.02em; }
+  .back { display:inline-block; margin-bottom:24px; font-size:0.88em; color:#666; }
+  .item { background:#fff; border:1px solid #e5e5e5; border-radius:10px; padding:20px 24px; margin-bottom:16px; }
+  .item .head { display:flex; justify-content:space-between; flex-wrap:wrap; gap:6px; align-items:baseline; }
+  .item h2 { font-size:1.1em; }
+  .item .date { font-size:0.8em; color:#888; font-family:ui-monospace,monospace; }
+  .item p { font-size:0.92em; color:#444; margin-top:8px; }
+  .tags { margin-top:10px; }
+  .tag { display:inline-block; background:#f0f0f0; border-radius:5px; padding:2px 9px;
+         font-size:0.75em; color:#555; margin:0 5px 4px 0; }
+  a { color:#1565c0; text-decoration:none; }
+  a:hover { text-decoration:underline; }
+</style>
+</head>
+<body>
+<a class="back" href="/">← yunseop.im</a>
+<h1>Projects</h1>
+<p style="color:#666; font-size:0.92em; margin:8px 0 28px;">Case studies — what I built, how it works, and what I learned.</p>
+
+<div class="item">
+  <div class="head"><h2><a href="/projects/graphrag-lab.html">graphrag-lab — GraphRAG retrieval experiments</a></h2><span class="date">2026</span></div>
+  <p>Knowledge-graph-grounded retrieval in pure Python stdlib — hybrid BM25 + 1-hop graph expansion, runnable demo with tests. A clean-room study of how structure improves retrieval.</p>
+  <div class="tags"><span class="tag">Python</span><span class="tag">GraphRAG</span><span class="tag">BM25</span><span class="tag">SQLite</span><span class="tag">information retrieval</span><span class="tag">open source</span></div>
+</div>
+
+<div class="item">
+  <div class="head"><h2><a href="/projects/devin-harness.html">devin-harness — operating system for agentic repos</a></h2><span class="date">2026</span></div>
+  <p>Lifecycle hooks, deterministic guards, action ledger, typed LLM review gates, and a dispatch contract — the harness I built for running autonomous coding agents safely in production. <a href="/writing/agents.html">Full teardown →</a></p>
+  <div class="tags"><span class="tag">AI agents</span><span class="tag">TypeScript</span><span class="tag">Node.js</span><span class="tag">guardrails</span><span class="tag">LLM evaluation</span><span class="tag">open source · MIT</span></div>
+</div>
+
+<div class="item">
+  <div class="head"><h2><a href="/projects/freightscaler.html">FreightScaler — real-time freight risk SaaS</a></h2><span class="date">2025–2026</span></div>
+  <p>Full-stack SaaS ranking freight routes by live weather risk — React/TypeScript frontend, AWS serverless backend, OR-Tools optimization, multi-tenant billing boundaries, 24 ADRs, live deployment. <a href="/writing/freightscaler.html">Architecture writeup →</a></p>
+  <div class="tags"><span class="tag">React</span><span class="tag">TypeScript</span><span class="tag">AWS</span><span class="tag">Lambda</span><span class="tag">DynamoDB</span><span class="tag">OR-Tools</span><span class="tag">SaaS</span><span class="tag">Terraform</span></div>
+</div>
+
+</body>
+</html>
