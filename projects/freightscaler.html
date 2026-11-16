@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FreightScaler — Real-Time Freight Risk Intelligence SaaS | Yunseop Im</title>
+<meta name="description" content="Case study: FreightScaler — full-stack SaaS ranking freight routes by live NWS weather risk. React/TypeScript + AWS serverless + OR-Tools, multi-tenant, 24 ADRs, live demo.">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+         line-height:1.75; color:#1a1a1a; max-width:780px; margin:0 auto; padding:48px 24px 80px; background:#fafafa; }
+  h1 { font-size:1.9em; letter-spacing:-0.02em; line-height:1.25; }
+  h2 { font-size:1.25em; margin:38px 0 12px; }
+  .meta { color:#888; font-size:0.85em; margin:10px 0 26px; }
+  .tags { margin:12px 0 26px; }
+  .tag { display:inline-block; background:#fff; border:1px solid #ddd; border-radius:6px;
+         padding:3px 10px; font-size:0.78em; color:#333; margin:0 5px 5px 0; }
+  p, li { color:#333; font-size:0.95em; }
+  ul, ol { padding-left:24px; }
+  li { margin:6px 0; }
+  code { background:#eee; padding:1px 6px; border-radius:4px; font-size:0.88em; font-family:ui-monospace,Menlo,monospace; }
+  a { color:#1565c0; }
+  .back { display:inline-block; margin-bottom:24px; font-size:0.88em; color:#666; }
+  .cta { margin-top:40px; padding:18px 22px; background:#fff; border:1px solid #e0e0e0; border-radius:10px; font-size:0.92em; }
+  table { border-collapse:collapse; width:100%; margin:14px 0; font-size:0.88em; }
+  th, td { border:1px solid #ddd; padding:7px 11px; text-align:left; }
+  th { background:#f0f0f0; }
+</style>
+</head>
+<body>
+<a class="back" href="/projects/">← All projects</a>
+<h1>FreightScaler — real-time freight risk intelligence SaaS</h1>
+<p class="meta">Yunseop Im · 2025–2026 · <a href="https://github.com/signalgap9-del/peachtree-dispatch">github.com/signalgap9-del/peachtree-dispatch</a> · <a href="https://d23c97ytqgl4xu.cloudfront.net/">live demo</a></p>
+<div class="tags">
+  <span class="tag">React</span><span class="tag">TypeScript</span><span class="tag">AWS</span>
+  <span class="tag">Lambda</span><span class="tag">DynamoDB</span><span class="tag">OR-Tools</span>
+  <span class="tag">Kafka</span><span class="tag">SaaS</span><span class="tag">Terraform</span><span class="tag">full-stack</span>
+</div>
+
+<h2>The product</h2>
+<p>Which route exposes cargo to the least risk? FreightScaler compares route alternatives
+not just by travel time but by live weather risk, official NWS alerts, and road-event
+exposure — with per-segment explanations (rain, flood, wind, heat, winter), saved route
+watchlists with monitoring thresholds, and a multi-tenant SaaS account layer. If a data
+source is unavailable, the UI says so rather than showing fabricated data.</p>
+
+<h2>Architecture evolution</h2>
+<p>The platform grew through four phases, each triggered by a user demand that broke a
+different scaling axis:</p>
+<table>
+<tr><th>Phase</th><th>Trigger</th><th>What broke</th><th>Response</th></tr>
+<tr><td>Route risk query</td><td>Initial product</td><td>—</td><td>Lambda + DynamoDB, fully serverless</td></tr>
+<tr><td>Fleet telemetry</td><td>Live truck tracking</td><td>~28M GPS events/day, WebSocket fan-out</td><td>Kafka + TimescaleDB hypertable + nginx LB</td></tr>
+<tr><td>Freight marketplace</td><td>Carrier matching</td><td>500 concurrent bids</td><td>CQRS + optimistic locking + Redis Sorted Set</td></tr>
+<tr><td>Settlement</td><td>Delay liability</td><td>Multi-step payments</td><td>Saga orchestrator + atomic wallet + idempotency</td></tr>
+</table>
+<p>Telemetry is write-heavy, tracking is connection-heavy, bidding is contention-heavy,
+settlement is consistency-heavy — different axes a monolith can't scale independently.</p>
+
+<h2>Backend decisions</h2>
+<ul>
+  <li><strong>Serverless-first, hybrid where it earns it</strong> — Lambda+DynamoDB for request/response; dedicated compute only where connection counts demand it</li>
+  <li><strong>DynamoDB operational store + PostGIS hybrid</strong> for geospatial queries</li>
+  <li><strong>Async OR-Tools VRP</strong> off the request path; an ML delay model gated behind 4 fail-closed promotion checks before it could affect solver costs</li>
+  <li><strong>Dual-ledger quota + idempotency keys</strong> on every mutation; plan entitlements (FREE/PRO/TEAM/INTERNAL) enforced server-side</li>
+  <li><strong>NL route planning</strong> via an OptiMUS-style multi-agent pattern — LLM constraint extraction → solver formulation → explanation, with schema-repair loop and model fallback</li>
+</ul>
+
+<h2>Frontend &amp; operations</h2>
+<p>React/TypeScript client renders segment-level risk breakdowns so users see <em>why</em> a
+corridor scores differently. A <code>/status</code> page exposes live data-source health,
+retry/fallback counters, and performance snapshots — operational transparency as a product
+feature. Terraform-managed infra, GitHub Actions CI with security scanning, promote-to-prod
+and rollback pipelines.</p>
+
+<h2>Honest gaps</h2>
+<p>Billing isn't wired (the entitlement boundary exists so payment slots in later); the
+marketplace phase is documented more than deployed; settlement is design + foundation,
+not a live money path. The boundaries landed before the risky parts did — deliberately.</p>
+
+<div class="cta">
+<strong>Live demo:</strong> <a href="https://d23c97ytqgl4xu.cloudfront.net/">d23c97ytqgl4xu.cloudfront.net</a> ·
+<strong>Repo:</strong> <a href="https://github.com/signalgap9-del/peachtree-dispatch">github.com/signalgap9-del/peachtree-dispatch</a> ·
+<a href="/writing/freightscaler.html">deep writeup</a> ·
+<a href="/">profile</a>
+</div>
+</body>
+</html>
