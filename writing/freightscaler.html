@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Building a Real-Time Freight Risk Intelligence SaaS | Yunseop Im</title>
+<meta name="description" content="Architecture teardown of FreightScaler: React/TypeScript frontend on CloudFront, AWS serverless backend (Lambda, DynamoDB, OR-Tools VRP), NWS/NOAA hazard feeds, multi-tenant quotas and idempotency, 24 ADRs, Terraform and promote/rollback CI/CD.">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+         line-height:1.75; color:#1a1a1a; max-width:780px; margin:0 auto; padding:48px 24px 80px; background:#fafafa; }
+  h1 { font-size:2em; letter-spacing:-0.02em; line-height:1.25; }
+  h2 { font-size:1.3em; margin:44px 0 14px; letter-spacing:-0.01em; }
+  .meta { color:#888; font-size:0.88em; margin:10px 0 30px; }
+  p, li { color:#333; font-size:0.97em; }
+  ul, ol { padding-left:24px; }
+  li { margin:6px 0; }
+  code { background:#eee; padding:1px 6px; border-radius:4px; font-size:0.88em;
+         font-family:ui-monospace,Menlo,monospace; }
+  pre { background:#1e1e1e; color:#d4d4d4; padding:18px 20px; border-radius:8px;
+        overflow-x:auto; font-size:0.82em; margin:16px 0; line-height:1.55; }
+  pre code { background:none; padding:0; color:inherit; }
+  a { color:#1565c0; }
+  .back { display:inline-block; margin-bottom:26px; font-size:0.88em; color:#666; }
+  .cta { margin-top:48px; padding:20px 22px; background:#fff; border:1px solid #e0e0e0;
+         border-radius:10px; }
+  table { border-collapse:collapse; width:100%; margin:16px 0; font-size:0.9em; }
+  th, td { border:1px solid #ddd; padding:8px 12px; text-align:left; }
+  th { background:#f0f0f0; }
+</style>
+</head>
+<body>
+<a class="back" href="/">← yunseop.im</a>
+<h1>Building a real-time freight risk intelligence SaaS, serverless-first</h1>
+<p class="meta">Yunseop Im · Georgia Tech M.S. Computer Science · Full-stack / backend systems</p>
+
+<p><a href="https://github.com/signalgap9-del/peachtree-dispatch">FreightScaler</a> answers
+a deceptively simple question: <em>which route exposes my cargo to the least risk?</em>
+It compares route alternatives not just by travel time but by live weather risk,
+official NWS alerts, and road-event exposure — with per-segment explanations, saved
+route watchlists, and a multi-tenant SaaS account layer. This post is the architecture
+teardown: how a solo engineer takes a product from "Lambda function" to a platform
+with four documented architectural eras, 24 ADRs, and a live deployment.</p>
+
+<h2>Phase 1: the serverless wedge</h2>
+
+<p>The product started where most data products should: a route-risk query API on
+AWS Lambda + DynamoDB, a React/TypeScript frontend on CloudFront, and honest data
+boundaries. The key product decision was doctrinal, not technical — <strong>if a data
+source is unavailable, the UI says so instead of showing fabricated data.</strong>
+Every downstream trust decision (alerts, thresholds, watchlists) depends on users
+believing the numbers, so fake-data fallbacks were ruled out by design.</p>
+
+<h2>Phase 2–4: when scaling axes diverge, monoliths lose</h2>
+
+<p>Each growth phase was triggered by a concrete user demand, and each broke a
+different axis of the system:</p>
+
+<table>
+<tr><th>Phase</th><th>User trigger</th><th>What broke</th><th>Architectural response</th></tr>
+<tr><td>Route risk query</td><td>Initial product</td><td>Nothing yet</td><td>Lambda + DynamoDB, fully serverless</td></tr>
+<tr><td>Fleet telemetry</td><td>"Show my 50 trucks live"</td><td>~28M GPS events/day, WebSocket fan-out</td><td>Kafka + TimescaleDB hypertable + nginx LB</td></tr>
+<tr><td>Freight marketplace</td><td>"Find a carrier for this corridor"</td><td>500 concurrent bids, real-time ranking</td><td>CQRS + optimistic locking + Redis Sorted Set</td></tr>
+<tr><td>Settlement</td><td>"Weather delayed it — who pays?"</td><td>Multi-step payment across services</td><td>Saga orchestrator + atomic wallet + idempotency</td></tr>
+</table>
+
+<p>The lesson encoded in ADR-0024: telemetry is <em>write-heavy</em>, tracking is
+<em>connection-heavy</em>, bidding is <em>contention-heavy</em>, settlement is
+<em>consistency-heavy</em>. These are different scaling axes — a monolith cannot scale
+them independently, which is why the platform evolved into services, not because
+"microservices" was a goal.</p>
+
+<h2>The backend decisions that matter</h2>
+
+<p>Twenty-four ADRs document the reasoning. The load-bearing ones:</p>
+
+<ul>
+<li><strong>Serverless-first, hybrid where it earns it (ADR-0001/0002).</strong>
+Lambda+DynamoDB for request/response paths; dedicated compute only where connection
+counts or write throughput demand it.</li>
+<li><strong>DynamoDB as the operational store (ADR-0003)</strong> with PostGIS hybrid
+for geospatial queries (ADR-0006) — single-table design for access patterns, real
+geometry where geometry is the query.</li>
+<li><strong>Async OR-Tools optimization (ADR-0004).</strong> The multi-stop VRP solver
+runs off the request path; an ML shadow workflow can influence solver edge costs only
+after passing explicit promotion gates — offline evaluation before online authority.</li>
+<li><strong>Dual-ledger quota + idempotency (ADR-0009/0011).</strong> Every mutating API
+accepts idempotency keys; usage metering and plan entitlements (FREE/PRO/TEAM/INTERNAL)
+are enforced server-side with structured quota errors. Billing is deliberately not
+wired — the entitlement boundary exists so payment can slot in later without touching
+the API contract.</li>
+<li><strong>RAG-hybrid search (ADR-0016) and NL2OPT agent design (ADR-0017)</strong> —
+the platform's intelligence layer is designed as retrieval + optimization, not a
+chat wrapper.</li>
+</ul>
+
+<h2>The frontend: density without deception</h2>
+
+<p>The React/TypeScript client renders segment-level risk breakdowns — rain, flood,
+wind, heat, winter — so users see <em>why</em> a corridor scores differently, not just
+a number. Saved routes live in a private watchlist with per-route monitoring
+thresholds and manual refresh. A <code>/status</code> page exposes live data-source
+health, frontend retry/fallback counters, and browser performance snapshots — the
+operational transparency is part of the product, not an internal tool.</p>
+
+<h2>Engineering hygiene as a feature</h2>
+
+<p>The repo carries the same discipline the harness blog post describes: GitHub Actions
+for CI, nightly runs, security scanning (Trivy), Terraform plan/apply separation,
+promote-to-prod and rollback workflows, CODEOWNERS, dependabot, and a PR template.
+Deployment is not an afterthought — <code>promote-prod.yml</code> and
+<code>rollback.yml</code> are first-class pipelines because a solo engineer's safety
+net <em>is</em> the pipeline.</p>
+
+<h2>What I'd do differently / what's next</h2>
+
+<p>The honest gaps: billing isn't wired, the marketplace phase is documented more
+than deployed, and the settlement saga exists as design + foundation rather than a
+live money path. Those boundaries are deliberate — entitlement and saga contracts
+landed before the risky parts did.</p>
+
+<p>The through-line across both this project and my agent work is the same: <strong>the
+structure is the product</strong>. Whether it's a freight-risk graph or an agent
+lifecycle, the leverage comes from getting the data model, the failure semantics, and
+the verification loops right — before adding surface area.</p>
+
+<div class="cta">
+<strong>Live demo:</strong> <a href="https://d23c97ytqgl4xu.cloudfront.net/">d23c97ytqgl4xu.cloudfront.net</a> ·
+<strong>Repo:</strong> <a href="https://github.com/signalgap9-del/peachtree-dispatch">github.com/signalgap9-del/peachtree-dispatch</a><br>
+<strong>Related:</strong> <a href="/writing/agents.html">Running autonomous AI agents safely</a> ·
+<a href="/">profile &amp; projects</a> ·
+<a href="https://www.linkedin.com/in/yunseop-i-207a7215a/">LinkedIn</a>
+</div>
+
+</body>
+</html>
