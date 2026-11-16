@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Yunseop Im — Resume | Full-Stack Software Engineer, AI Engineering</title>
+<meta name="description" content="Resume of Yunseop Im — full-stack software engineer focused on AI engineering: AI agents, RAG/GraphRAG, multimodal pipelines, LLM infrastructure. M.S. Computer Science, Georgia Tech.">
+<meta name="keywords" content="Yunseop Im resume, software engineer resume, AI engineer, full-stack engineer, RAG, GraphRAG, LLM agents, Python, TypeScript, React, FastAPI, Georgia Tech">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+         line-height:1.6; color:#1a1a1a; max-width:800px; margin:0 auto; padding:48px 24px 80px; background:#fff; }
+  h1 { font-size:2em; letter-spacing:-0.02em; }
+  .contact { color:#555; font-size:0.92em; margin:8px 0 4px; }
+  .contact a { color:#1565c0; text-decoration:none; }
+  .summary { margin:18px 0; color:#333; font-size:0.95em; }
+  h2 { font-size:1.05em; text-transform:uppercase; letter-spacing:0.07em; color:#444;
+       margin:30px 0 10px; padding-bottom:5px; border-bottom:1.5px solid #ddd; }
+  .item { margin-bottom:16px; }
+  .item .head { display:flex; justify-content:space-between; flex-wrap:wrap; gap:4px; }
+  .item h3 { font-size:0.98em; }
+  .item .when { font-size:0.82em; color:#888; font-family:ui-monospace,monospace; }
+  .item .sub { font-size:0.86em; color:#1565c0; }
+  ul { margin:8px 0 0 20px; font-size:0.9em; color:#444; }
+  li { margin:3px 0; }
+  .skills-group { margin-bottom:10px; font-size:0.9em; }
+  .skills-group b { color:#333; }
+  .back { display:inline-block; margin-bottom:24px; font-size:0.88em; color:#666; }
+  @media print { body { padding:20px; } .back { display:none; } }
+</style>
+</head>
+<body>
+<a class="back" href="/">← yunseop.im</a>
+
+<h1>Yunseop Im</h1>
+<p class="contact">
+  <a href="https://www.linkedin.com/in/yunseop-i-207a7215a/">linkedin.com/in/yunseop-i-207a7215a</a> ·
+  <a href="https://github.com/signalgap9-del">github.com/signalgap9-del</a> ·
+  <a href="mailto:tristayunsub@gmail.com">tristayunsub@gmail.com</a> ·
+  Suwon, South Korea · open to relocation (Netherlands)
+</p>
+
+<p class="summary">
+Full-stack software engineer focused on <b>AI engineering</b> — AI agents, retrieval
+(RAG/GraphRAG), multimodal pipelines, and LLM infrastructure. Builds production systems
+end to end: backend services, frontend interfaces, and the model/serving layer in between.
+M.S. Computer Science, Georgia Tech (AI specialization).
+</p>
+
+<h2>Core competencies</h2>
+<div class="skills-group"><b>AI engineering:</b> LLM APIs &amp; multi-provider routing · AI agents &amp; tool-calling (LangChain, MCP) · RAG/GraphRAG · hybrid retrieval + reranking · vector DBs (Qdrant, pgvector) · knowledge graphs · multimodal pipelines · evals &amp; observability (Ragas, Langfuse) · guardrails · on-prem LLM serving</div>
+<div class="skills-group"><b>Backend:</b> Python (FastAPI) · TypeScript/Node.js · Java (Spring Boot) · gRPC · REST · WebSockets/SSE · PostgreSQL · Redis · Kafka</div>
+<div class="skills-group"><b>Frontend:</b> React · TypeScript · Tailwind · TanStack Query · Zustand</div>
+<div class="skills-group"><b>Infra &amp; ops:</b> Docker · Kubernetes · Terraform · AWS · GCP · Cloudflare Workers · CI/CD · OpenTelemetry · Prometheus · Sentry</div>
+<div class="skills-group"><b>Languages:</b> Python · TypeScript · JavaScript · Java · SQL</div>
+
+<h2>Selected projects</h2>
+
+<div class="item">
+  <div class="head"><h3>graphrag-lab — knowledge-graph-grounded retrieval</h3><span class="when">2026</span></div>
+  <div class="sub"><a href="https://github.com/signalgap9-del/graphrag-lab">github.com/signalgap9-del/graphrag-lab</a></div>
+  <ul>
+    <li>Hybrid retrieval engine: BM25 sparse scoring + 1-hop knowledge-graph expansion, fused ranking — pure Python stdlib, zero dependencies</li>
+    <li>SQLite schema for chunks/entities/relations; CLI for indexing corpora and querying; 8 unit tests including a graph-expansion ranking assertion</li>
+  </ul>
+</div>
+
+<div class="item">
+  <div class="head"><h3>devin-harness — operating system for agentic repos</h3><span class="when">2026</span></div>
+  <div class="sub"><a href="https://github.com/signalgap9-del/devin-harness">github.com/signalgap9-del/devin-harness</a> · MIT</div>
+  <ul>
+    <li>Lifecycle hook system (SessionStart / PreToolUse / PostToolUse / Stop) with deterministic exec and file guards that block dangerous actions before they run</li>
+    <li>Action ledger for full session auditability; typed LLM review gates with persistent state; agent dispatch contract; 11 domain skills; ~30-doc pattern corpus</li>
+  </ul>
+</div>
+
+<div class="item">
+  <div class="head"><h3>FreightScaler — real-time freight risk intelligence SaaS</h3><span class="when">2025–2026</span></div>
+  <div class="sub"><a href="https://github.com/signalgap9-del/peachtree-dispatch">github.com/signalgap9-del/peachtree-dispatch</a> · <a href="/writing/freightscaler.html">writeup</a></div>
+  <ul>
+    <li>Full-stack SaaS: React/TypeScript frontend on CloudFront; AWS serverless backend (Lambda, DynamoDB, Kafka/CDC); OR-Tools route optimization</li>
+    <li>Multi-tenant quotas, idempotency keys, structured errors; 24 architecture decision records; Terraform + promote/rollback CI/CD; live deployment</li>
+  </ul>
+</div>
+
+<h2>Experience</h2>
+
+<div class="item">
+  <div class="head"><h3>Software Engineer — AI Products</h3><span class="when">2025 — Present</span></div>
+  <ul>
+    <li>Build backend modules and the AI layer of an enterprise platform: retrieval over large document corpora, knowledge-graph grounding, change-management workflows, and on-prem LLM serving on customer GPUs</li>
+    <li>Designed hybrid retrieval (sparse + dense, fusion, reranking) with per-scope isolation; guided decoding for citation-grounded model output</li>
+  </ul>
+</div>
+
+<div class="item">
+  <div class="head"><h3>Software Engineer (Contract) — Applied AI</h3><span class="when">2025 — 2026</span></div>
+  <ul>
+    <li>Built and operated an LLM customer-support chatbot serving thousands of users; designed a verification layer that reduced unsupported claims by half</li>
+    <li>Automated data ingestion pipelines (Python/Playwright) with retry and staleness handling</li>
+  </ul>
+</div>
+
+<div class="item">
+  <div class="head"><h3>System Engineer — Telecom Cloud Platform</h3><span class="when">2023</span></div>
+  <ul>
+    <li>Diagnosed production performance issues for major carriers; built Python/Bash tooling for log analysis, query-regression testing, and infrastructure health monitoring</li>
+  </ul>
+</div>
+
+<h2>Education</h2>
+<div class="item">
+  <div class="head"><h3>Georgia Institute of Technology — M.S. Computer Science, AI specialization</h3><span class="when">2023 — Expected 2027</span></div>
+  <ul><li>Machine Learning, Software Architecture Design, Computer Networks, Operating Systems — graduate coursework</li></ul>
+</div>
+<div class="item">
+  <div class="head"><h3>Tech University of Korea — B.S. Mechanical Engineering</h3><span class="when">2015 — 2022</span></div>
+</div>
+
+<h2>Open source</h2>
+<ul>
+  <li>2 merged pull requests to <a href="https://github.com/NVIDIA/NVSentinel">NVIDIA/NVSentinel</a> — GPU fleet health monitoring (syslog XID fix, HealthEvent data model)</li>
+</ul>
+
+</body>
+</html>
