@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>devin-harness — Operating System for Agentic Repos | Yunseop Im</title>
+<meta name="description" content="Case study: devin-harness — lifecycle hooks, deterministic guards, action ledger, typed LLM review gates, and dispatch contract for running autonomous AI agents safely. MIT open source.">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+         line-height:1.75; color:#1a1a1a; max-width:780px; margin:0 auto; padding:48px 24px 80px; background:#fafafa; }
+  h1 { font-size:1.9em; letter-spacing:-0.02em; line-height:1.25; }
+  h2 { font-size:1.25em; margin:38px 0 12px; }
+  .meta { color:#888; font-size:0.85em; margin:10px 0 26px; }
+  .tags { margin:12px 0 26px; }
+  .tag { display:inline-block; background:#fff; border:1px solid #ddd; border-radius:6px;
+         padding:3px 10px; font-size:0.78em; color:#333; margin:0 5px 5px 0; }
+  p, li { color:#333; font-size:0.95em; }
+  ul, ol { padding-left:24px; }
+  li { margin:6px 0; }
+  code { background:#eee; padding:1px 6px; border-radius:4px; font-size:0.88em; font-family:ui-monospace,Menlo,monospace; }
+  pre { background:#1e1e1e; color:#d4d4d4; padding:16px 18px; border-radius:8px; overflow-x:auto; font-size:0.8em; margin:14px 0; }
+  pre code { background:none; padding:0; color:inherit; }
+  a { color:#1565c0; }
+  .back { display:inline-block; margin-bottom:24px; font-size:0.88em; color:#666; }
+  .cta { margin-top:40px; padding:18px 22px; background:#fff; border:1px solid #e0e0e0; border-radius:10px; font-size:0.92em; }
+  table { border-collapse:collapse; width:100%; margin:14px 0; font-size:0.88em; }
+  th, td { border:1px solid #ddd; padding:7px 11px; text-align:left; }
+  th { background:#f0f0f0; }
+</style>
+</head>
+<body>
+<a class="back" href="/projects/">← All projects</a>
+<h1>devin-harness — operating system for agentic repos</h1>
+<p class="meta">Yunseop Im · 2026 · <a href="https://github.com/signalgap9-del/devin-harness">github.com/signalgap9-del/devin-harness</a> · MIT</p>
+<div class="tags">
+  <span class="tag">AI agents</span><span class="tag">TypeScript</span><span class="tag">Node.js</span>
+  <span class="tag">guardrails</span><span class="tag">LLM evaluation</span><span class="tag">open source</span>
+</div>
+
+<h2>The problem</h2>
+<p>Running autonomous coding agents on a real repo fails in a specific way: <strong>gray
+failures</strong>. The session reports success while a queue silently stalls, a deploy goes
+green without running its migration, or an edit touches a file it shouldn't. Diff review
+can't catch these — the damage is in what the agent <em>didn't</em> do. The fix isn't a
+better prompt; it's machinery around the agent.</p>
+
+<h2>Architecture</h2>
+<table>
+<tr><th>Layer</th><th>Component</th><th>What it does</th></tr>
+<tr><td>Lifecycle</td><td><code>session-start.mjs</code></td><td>Session opens informed: dirty tree, stale locks, open obligations, incident index</td></tr>
+<tr><td>PreToolUse</td><td><code>agent-guard.mjs</code> · <code>file-guard.mjs</code></td><td>Deterministic regex guards block dangerous shell commands and writes to secret/migration/runtime files — sub-50ms, zero model calls</td></tr>
+<tr><td>PostToolUse</td><td><code>agent-ledger.mjs</code></td><td>Every tool call appended to <code>action-log.jsonl</code> (secrets redacted) — the session is auditable as a trace</td></tr>
+<tr><td>UserPromptSubmit</td><td><code>prompt-guard.mjs</code></td><td>External-knowledge questions get a mandatory source-verification instruction injected</td></tr>
+<tr><td>Stop</td><td><code>claim-guard.mjs</code></td><td>Files changed but no test ran → loud "unverified" advisory instead of silent green</td></tr>
+<tr><td>Review</td><td><code>gate.mjs</code> → <code>dep-audit.mjs</code> → <code>jev-gate.mjs</code></td><td>Deterministic secret/suppression scan → npm supply-chain audit → typed LLM judgment (14 constraints) with persistent state</td></tr>
+<tr><td>Orchestration</td><td><code>ops/dispatch/</code></td><td>Dispatch contract + rules for delegating work to autonomous sessions</td></tr>
+<tr><td>Knowledge</td><td><code>.devin/skills/</code> · <code>docs/</code> · <code>templates/</code></td><td>11 domain skills, ~30 pattern docs, AGENTS/ADR/incident templates</td></tr>
+</table>
+
+<h2>Design principles</h2>
+<ul>
+  <li><strong>Deterministic before stochastic</strong> — anything that can be a regex is a regex; model calls are reserved for genuine judgment</li>
+  <li><strong>Fail closed</strong> — blocked actions produce errors the agent must route around legitimately</li>
+  <li><strong>State that accumulates</strong> — persistent gate state means resolved findings never re-block; the system learns this repo over time</li>
+</ul>
+
+<h2>Try it</h2>
+<pre><code>git clone https://github.com/signalgap9-del/devin-harness
+node setup.mjs /path/to/your/repo</code></pre>
+<p>Full teardown with reasoning: <a href="/writing/agents.html">/writing/agents.html</a></p>
+
+<div class="cta">
+<strong>Repo:</strong> <a href="https://github.com/signalgap9-del/devin-harness">github.com/signalgap9-del/devin-harness</a> ·
+<a href="/">profile</a> ·
+<a href="https://www.linkedin.com/in/yunseop-i-207a7215a/">LinkedIn</a>
+</div>
+</body>
+</html>
