@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GraphRAG for E-Commerce — Why Product Catalogs Break Naive RAG | Yunseop Im</title>
+<meta name="description" content="A field guide to retrieval over e-commerce data: why product catalogs (SKUs, variants, compatibility, bundles, inventory) defeat chunk-and-embed RAG, how knowledge-graph expansion answers 'which products fit X' questions, and the architecture that makes it work in production — multi-tenant, cited, honest about limits.">
+<meta name="keywords" content="GraphRAG, e-commerce search, product catalog retrieval, SKU retrieval, product compatibility, recommendation RAG, knowledge graph e-commerce, hybrid search BM25 vector, LLM shopping assistant, multi-tenant RAG, vLLM structured output">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+         line-height:1.75; color:#1a1a1a; max-width:780px; margin:0 auto; padding:48px 24px 80px; background:#fafafa; }
+  h1 { font-size:2em; letter-spacing:-0.02em; line-height:1.25; }
+  h2 { font-size:1.3em; margin:48px 0 14px; letter-spacing:-0.01em; }
+  h3 { font-size:1.05em; margin:28px 0 8px; }
+  .meta { color:#888; font-size:0.85em; margin:10px 0 26px; }
+  p, li { color:#333; font-size:0.95em; }
+  ul, ol { padding-left:24px; }
+  li { margin:6px 0; }
+  code { background:#eee; padding:1px 6px; border-radius:4px; font-size:0.86em; font-family:ui-monospace,Menlo,monospace; }
+  pre { background:#1e1e1e; color:#d4d4d4; padding:18px 20px; border-radius:8px;
+        overflow-x:auto; font-size:0.82em; line-height:1.6; margin:16px 0; }
+  pre code { background:none; padding:0; color:inherit; font-size:inherit; }
+  a { color:#1565c0; }
+  .back { display:inline-block; margin-bottom:24px; font-size:0.88em; color:#666; }
+  .cta { margin-top:48px; padding:18px 22px; background:#fff; border:1px solid #e0e0e0; border-radius:10px; font-size:0.92em; }
+  blockquote { border-left:3px solid #ddd; padding:4px 0 4px 16px; color:#555; margin:14px 0; }
+  .toc { background:#fff; border:1px solid #e0e0e0; border-radius:10px; padding:18px 22px; margin:24px 0; font-size:0.9em; }
+  .toc strong { display:block; margin-bottom:8px; }
+  .toc a { display:block; padding:2px 0; color:#444; text-decoration:none; }
+  .toc a:hover { color:#1565c0; }
+  .diagram { background:#fff; border:1px solid #e0e0e0; border-radius:10px; padding:24px; margin:24px 0; overflow-x:auto; }
+  .diagram svg { display:block; margin:0 auto; max-width:100%; height:auto; }
+  .sources { margin-top:36px; font-size:0.85em; color:#666; }
+  .sources a { color:#888; }
+  .callout { background:#fff8e1; border:1px solid #ffe082; border-radius:8px; padding:14px 18px; margin:16px 0; font-size:0.92em; color:#5d4037; }
+</style>
+</head>
+<body>
+<a class="back" href="/writing/">← Writing</a>
+<h1>GraphRAG for e-commerce — why product catalogs break naive RAG</h1>
+<p class="meta">Yunseop Im · Software engineer · M.S. CS, Georgia Tech · 2026 · ~18 min read</p>
+
+<div class="toc">
+<strong>Contents</strong>
+<a href="#problem">1. The shopping questions that demos can't answer</a>
+<a href="#why-naive-fails">2. Why chunk-and-embed fails on catalogs</a>
+<a href="#graph">3. What a product graph actually buys you</a>
+<a href="#arch">4. Architecture: from catalog to cited answer</a>
+<a href="#tenancy">5. Multi-tenancy and the catalog graph</a>
+<a href="#limits">6. Honest limits</a>
+<a href="#repo">7. Reference implementation</a>
+</div>
+
+<h2 id="problem">1. The shopping questions that demos can't answer</h2>
+
+<p>Every "AI shopping assistant" demo works the same way: embed the product
+descriptions, retrieve the top-k similar chunks, let the LLM write a nice
+paragraph. It demos beautifully — and then a real user asks something the demo
+never covered:</p>
+
+<ul>
+  <li>"Which phone cases fit the iPhone 15 Pro <em>and</em> are in stock?"</li>
+  <li>"What's a cheaper alternative to this laptop that takes the same charger?"</li>
+  <li>"Show me everything in the camera bundle minus the lens I already own."</li>
+  <li>"Is this jacket compatible with my existing 3-season tent?"</li>
+  <li>"What did buyers who returned this item say was wrong with it?"</li>
+</ul>
+
+<p>None of these are questions about what a product <em>says</em>. They're
+questions about how products <em>relate</em> — to devices, to each other, to
+inventory state, to other customers' outcomes. The catalog is a relational
+database wearing a text corpus's clothing, and chunk-and-embed retrieval reads
+it like prose. That's the gap.</p>
+
+<p>I ran an LLM shopping assistant in production for a Korean e-commerce
+community — thousands of members asking exactly these kinds of questions — and
+the failure pattern was consistent: the system answered what products <em>are</em>,
+while users asked what products <em>work with, replace, contain, and cost right
+now</em>.</p>
+
+<h2 id="why-naive-fails">2. Why chunk-and-embed fails on catalogs</h2>
+
+<p>Four mechanical failures, not a "bad embeddings" problem:</p>
+
+<h3>2.1 Variants explode the chunk</h3>
+
+<p>A single product page describes a product <em>family</em>: "Winter Jacket —
+navy/S/¥89,000, black/M/¥89,000, olive/L/¥92,000." Chunked and embedded as
+text, the SKU-level distinctions — which colorway is in stock, which size runs
+small per reviews — smear into one undifferentiated blob. The model answers
+about "the jacket" when the user asked about "the navy S."</p>
+
+<h3>2.2 Compatibility is a relation, not a description</h3>
+
+<p>"Fits iPhone 15 Pro" rarely appears verbatim in the case's description — it
+lives in a compatibility table, a structured attribute, or a fitment note
+buried in spec sheet row 14 of 22. Embedding similarity can't join "iPhone 15
+Pro" to "Model A2849, A3089, A3090" — those are identifier lookups, and dense
+retrieval is famously weak on identifiers.</p>
+
+<h3>2.3 State changes faster than text</h3>
+
+<p>Price, stock, and promotions are mutable state. An embedding indexed last
+week confidently describes a jacket at ¥89,000 that's now ¥109,000 and
+sold out in the user's size. Retrieval returns <em>descriptions of the past</em>
+while the user needs the <em>present</em>.</p>
+
+<h3>2.4 Bundle and alternative questions are set operations</h3>
+
+<p>"Everything in the bundle except X" or "cheaper alternatives that share the
+charger spec" are not similarity searches — they're intersections, differences,
+and joins over product relationships. No amount of chunk tuning produces a
+set operation.</p>
+
+<div class="callout">
+<strong>The pattern:</strong> catalog questions are relational queries —
+compatibility joins, set differences, state lookups. Naive RAG answers "what
+does this product say." Shopping asks "what works with this, costs this, and
+exists right now." Different problem, different machinery.
+</div>
+
+<h2 id="graph">3. What a product graph actually buys you</h2>
+
+<p>Represent the catalog as entities and edges instead of text spans:</p>
+
+<pre><code>Product("Winter Jacket") ──has_variant──▶ SKU("navy-S")
+SKU("navy-S") ──priced_at──▶ ¥89,000 · stock: 14
+Product("Phone Case X") ──compatible_with──▶ Device("iPhone 15 Pro")
+Product("Camera Bundle") ──contains──▶ Lens("50mm") + Body + Strap
+Product("Laptop A") ──uses_charger──▶ ChargerSpec("65W USB-C")
+Product("Laptop B") ──uses_charger──▶ ChargerSpec("65W USB-C")
+SKU("navy-S") ──mentioned_in──▶ Review("runs small")</code></pre>
+
+<p>The failing queries become traversals and joins:</p>
+
+<ul>
+  <li>"Cases that fit iPhone 15 Pro and are in stock" → traverse
+  <code>compatible_with</code> edges to the device node, join to
+  <code>priced_at</code>/<code>stock</code> — a graph query plus a state
+  lookup, not a text search.</li>
+  <li>"Cheaper alternatives with the same charger" → find Laptop A's
+  <code>uses_charger</code> spec, traverse <em>incoming</em> edges to all
+  products sharing it, filter by price — set intersection over relations.</li>
+  <li>"Bundle minus the lens" → expand <code>contains</code>, subtract the
+  excluded entity, return the remainder with individual prices.</li>
+  <li>"What did returners complain about" → traverse
+  <code>mentioned_in</code> edges filtered to negative-sentiment reviews —
+  an aggregation no single chunk contains.</li>
+</ul>
+
+<p>Same principle as the engineering-data version of this problem: <strong>the
+graph produces the candidate set retrieval can't reach; the LLM then answers
+over assembled, current, cited context.</strong> The graph handles relations;
+a separate live lookup handles mutable state (price/stock) — conflating the two
+is how you get confident answers about yesterday's inventory.</p>
+
+<h2 id="arch">4. Architecture: from catalog to cited answer</h2>
+
+<div class="diagram">
+<svg viewBox="0 0 720 210" xmlns="http://www.w3.org/2000/svg" font-family="-apple-system,Segoe UI,sans-serif">
+  <defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#888"/></marker></defs>
+  <rect x="10" y="70" width="130" height="60" rx="8" fill="#fff" stroke="#ccc"/>
+  <text x="75" y="95" text-anchor="middle" font-size="12" font-weight="600" fill="#333">Catalog data</text>
+  <text x="75" y="112" text-anchor="middle" font-size="10" fill="#888">SKUs · specs · reviews</text>
+  <line x1="140" y1="100" x2="165" y2="100" stroke="#888" stroke-width="1.5" marker-end="url(#arr)"/>
+  <rect x="170" y="55" width="130" height="90" rx="8" fill="#fff" stroke="#1565c0" stroke-width="1.5"/>
+  <text x="235" y="82" text-anchor="middle" font-size="12" font-weight="600" fill="#1565c0">Normalize + link</text>
+  <text x="235" y="100" text-anchor="middle" font-size="10" fill="#666">variants → SKUs</text>
+  <text x="235" y="115" text-anchor="middle" font-size="10" fill="#666">attrs → entities</text>
+  <text x="235" y="130" text-anchor="middle" font-size="10" fill="#666">fitment → edges</text>
+  <line x1="300" y1="100" x2="325" y2="100" stroke="#888" stroke-width="1.5" marker-end="url(#arr)"/>
+  <rect x="330" y="55" width="130" height="90" rx="8" fill="#fff" stroke="#1565c0" stroke-width="1.5"/>
+  <text x="395" y="82" text-anchor="middle" font-size="12" font-weight="600" fill="#1565c0">Product graph</text>
+  <text x="395" y="100" text-anchor="middle" font-size="10" fill="#666">entities + edges</text>
+  <text x="395" y="115" text-anchor="middle" font-size="10" fill="#666">compatibility · bundles</text>
+  <text x="395" y="130" text-anchor="middle" font-size="10" fill="#666">tenant-scoped</text>
+  <line x1="460" y1="100" x2="485" y2="100" stroke="#888" stroke-width="1.5" marker-end="url(#arr)"/>
+  <rect x="490" y="55" width="130" height="90" rx="8" fill="#fff" stroke="#2e7d32" stroke-width="1.5"/>
+  <text x="555" y="82" text-anchor="middle" font-size="12" font-weight="600" fill="#2e7d32">Hybrid retrieval</text>
+  <text x="555" y="100" text-anchor="middle" font-size="10" fill="#666">BM25 + dense</text>
+  <text x="555" y="115" text-anchor="middle" font-size="10" fill="#666">+ graph traversal</text>
+  <text x="555" y="130" text-anchor="middle" font-size="10" fill="#666">+ live state join</text>
+  <line x1="620" y1="100" x2="645" y2="100" stroke="#888" stroke-width="1.5" marker-end="url(#arr)"/>
+  <rect x="650" y="70" width="60" height="60" rx="8" fill="#fff" stroke="#333"/>
+  <text x="680" y="95" text-anchor="middle" font-size="11" font-weight="600" fill="#333">LLM</text>
+  <text x="680" y="110" text-anchor="middle" font-size="9" fill="#888">cited answer</text>
+</svg>
+</div>
+
+<h3>4.1 Ingestion: SKUs and relations before embeddings</h3>
+
+<ul>
+  <li><strong>Variants decompose to SKUs.</strong> Each sellable unit becomes a
+  node with its own attributes — the atomic unit of truth, not the marketing
+  page.</li>
+  <li><strong>Compatibility tables become edges.</strong> Fitment data —
+  "case X fits devices A, B, C" — is already structured in most catalogs;
+  parsing it into typed edges is cheaper than hoping embeddings infer it.</li>
+  <li><strong>Mutable state stays out of the index.</strong> Price and stock
+  live in the transactional store and are joined at query time. Indexing them
+  into vectors guarantees stale answers.</li>
+  <li><strong>Reviews aggregate into signals.</strong> "Runs small," "charger
+  fits loosely" are per-SKU sentiment edges — retrieval can surface them as
+  evidence, not just prose.</li>
+</ul>
+
+<h3>4.2 Retrieval: relations first, similarity second</h3>
+
+<ol>
+  <li><strong>Entity resolution.</strong> Map the query's product/device/brand
+  mentions to graph nodes — "iPhone 15 Pro" must resolve to the canonical
+  device node, or every downstream traversal is wrong.</li>
+  <li><strong>Graph traversal for relational intent.</strong> Compatibility,
+  bundle membership, shared specs, review aggregation — these are edge walks
+  with filters, executed as queries, not searches.</li>
+  <li><strong>Hybrid text retrieval for the rest.</strong> BM25 for exact
+  model numbers and SKUs (dense retrieval is weak on identifiers); dense
+  embeddings for semantic queries ("warm winter jacket under ¥100k").</li>
+  <li><strong>Live state join.</strong> Price/stock/promotions are fetched at
+  answer time from the source of truth — never from the index.</li>
+</ol>
+
+<h3>4.3 Generation: schema-constrained, cited, honest</h3>
+
+<p>The serving layer uses vLLM's structured-output machinery — xgrammar-backed
+JSON-schema constraints via <code>response_format</code> — so every answer is
+<code>{recommendations[], citations[], caveats[]}</code> where citations point
+into retrieved context. Two rules that matter in commerce specifically:</p>
+
+<ul>
+  <li><strong>Never invent SKUs.</strong> Every recommended product must be a
+  node the traversal actually returned — the schema constraint makes the model
+  emit structured references, and the application layer validates each
+  <code>sku_id</code> against the candidate set before rendering. A hallucinated
+  product that doesn't exist is a return-shipping cost, not a typo.</li>
+  <li><strong>State claims cite the live lookup.</strong> "In stock," "¥89,000"
+  must come from the query-time join, and the answer should carry the
+  freshness of that lookup — a price quoted from the index is a bug, not a
+  hallucination, and it's worse because it looks authoritative.</li>
+</ul>
+
+<h2 id="tenancy">5. Multi-tenancy and the catalog graph</h2>
+
+<p>Commerce catalogs are multi-tenant by nature: marketplaces host thousands of
+sellers, each with private inventory, pricing rules, and sometimes confidential
+supplier terms. The graph inherits the boundary problem — and commerce raises
+the stakes, because a cross-tenant traversal doesn't just leak data, it can
+leak <em>pricing strategy</em>.</p>
+
+<p>The working pattern is the same discipline as multi-tenant RAG generally:</p>
+
+<ul>
+  <li><code>tenant_id</code> (or <code>seller_id</code>) is a mandatory predicate
+  on every node, edge, and traversal — enforced in the query layer, never
+  trusted from the client.</li>
+  <li>Entity resolution is scoped: "Model X" from seller A's catalog and seller
+  B's catalog are different products; a shared namespace merges them
+  incorrectly.</li>
+  <li>Public catalog data (a manufacturer's spec sheet) can legitimately be
+  shared across tenants — but the <em>edges derived from it</em> (who sells it,
+  at what price) stay tenant-scoped. Sharing nodes and scoping edges is the
+  nuanced version of this problem that flat vector stores handle worse.</li>
+</ul>
+
+<h2 id="limits">6. Honest limits</h2>
+
+<ul>
+  <li><strong>The catalog is the easy part; the edges are the work.</strong>
+  Products arrive with structured attributes from feeds — building compatibility
+  and bundle edges requires either good source data or inference, and inferred
+  edges are wrong often enough to need confidence scores and human review
+  queues.</li>
+  <li><strong>Cold-start catalogs have no graph.</strong> A new seller with 50
+  SKUs and sparse attributes gives traversal nothing to walk. Hybrid retrieval
+  carries the load until the graph densifies — design for the sparse case, not
+  the mature one.</li>
+  <li><strong>Real-time commerce breaks batch assumptions.</strong> Flash sales,
+  inventory syncs, and price changes mean the graph and the state store drift
+  continuously. The architecture only works if the state join is genuinely
+  live — a cached "current price" is a support ticket.</li>
+  <li><strong>Not every query needs the graph.</strong> "Tell me about this
+  jacket's material" is a chunk retrieval question. Route by intent —
+  unconditional traversal adds latency and noise to questions that didn't need
+  it.</li>
+</ul>
+
+<p>The honest summary: GraphRAG earns its complexity in commerce when questions
+are relational — compatibility, bundles, comparisons, aggregates. For
+single-product descriptions, it's overhead. And the part everyone underestimates
+isn't the graph — it's the <em>join discipline</em>: relations from the graph,
+state from the live store, and never the twain confused.</p>
+
+<h2 id="repo">7. Reference implementation</h2>
+
+<p>The retrieval mechanics — entity extraction, graph expansion fused with BM25,
+tenant-scoped traversal — are implemented in
+<a href="https://github.com/signalgap9-del/graphrag-lab">graphrag-lab</a>, a
+zero-dependency Python/SQLite reference you can run against any structured
+corpus. The e-commerce mapping is an application of the same mechanism: change
+the entity types and edge semantics, keep the retrieval discipline.</p>
+
+<div class="cta">
+<strong>Repo:</strong> <a href="https://github.com/signalgap9-del/graphrag-lab">github.com/signalgap9-del/graphrag-lab</a><br>
+<strong>Related:</strong> <a href="/writing/tenant-rag.html">Per-tenant RAG isolation</a> ·
+<a href="/writing/onprem-llm.html">Running LLM inference on customer GPUs</a> ·
+<a href="/writing/oss-stack.html">The production AI open-source stack</a> ·
+<a href="/">profile</a>
+</div>
+
+<div class="sources">
+<strong>Sources:</strong>
+<a href="https://github.com/signalgap9-del/graphrag-lab">graphrag-lab</a> ·
+<a href="https://docs.vllm.ai/en/stable/">vLLM documentation — structured outputs</a> ·
+Microsoft GraphRAG research (edge-centric retrieval over knowledge graphs)
+</div>
+</body>
+</html>
