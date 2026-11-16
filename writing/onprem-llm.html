@@ -54,7 +54,7 @@
 
 <p>Every AI feature demo eventually hits the same wall. The product works against
 OpenAI or Gemini, the demo lands, and then the customer's security review arrives:
-engineering drawings, supplier contracts, unreleased product data — none of it
+regulated records, unreleased IP, customer data under residency constraints — none of it
 can be sent to a third-party endpoint. Not "shouldn't," <em>can't</em>. The data
 residency constraint is contractual, sometimes regulatory, and non-negotiable.</p>
 
@@ -267,8 +267,8 @@ specifically, we constrain the model to emit <code>doc_id</code> references
 from the retrieved set — the citation isn't the model's memory of a source,
 it's a pointer the grammar forced it to populate. That converts "the model
 usually cites correctly" into "the model structurally cannot cite a document
-that wasn't in context" — a much stronger property for an engineering domain
-where a fabricated part-revision reference is a real-world error.</p>
+that wasn't in context" — a much stronger property for a high-stakes domain
+where a fabricated reference is a real-world error.</p>
 
 <p>vLLM's Python API exposes the same machinery more directly via
 <code>StructuredOutputsParams</code> — choice, regex, JSON schema, or raw
@@ -346,8 +346,8 @@ that no provider will warn you about.</p>
   <li><strong>Faithfulness, not fluency.</strong> Score answers against their
   retrieved sources — does the answer actually follow from the cited chunks?
   A confident wrong answer with a fabricated citation is categorically worse
-  than no answer. In engineering domains where a wrong revision reference
-  ships to a factory floor, this is the metric that matters.</li>
+  than no answer. In high-stakes domains where a wrong answer propagates
+  downstream, this is the metric that matters.</li>
   <li><strong>Confidence gating.</strong> Below a threshold, escalate to human
   review instead of generating. Guided decoding gives you structured
   confidence signals; use them. "I don't know" is a feature in high-stakes
@@ -386,8 +386,7 @@ that no provider will warn you about.</p>
 
 <p>The contrarian section, because the honest answer matters more than the
 elegant one. On-prem LLM serving is the right answer when data residency is a
-hard constraint — regulated industries, defense-adjacent work, IP-sensitive
-engineering data. It's the <em>wrong</em> answer when:</p>
+hard constraint — regulated industries, defense-adjacent work, IP-sensitive customer data. It's the <em>wrong</em> answer when:</p>
 
 <ul>
   <li><strong>The constraint is preference, not requirement.</strong> If the
