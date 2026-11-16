@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Writing — Technical Articles | Yunseop Im</title>
+<meta name="description" content="Technical writing by Yunseop Im — field guides on on-prem LLM serving, GraphRAG for engineering data, autonomous agent harnesses, multi-tenant RAG isolation, SaaS architecture teardowns, and production AI stacks.">
+<meta name="keywords" content="technical writing, LLM serving, GraphRAG, PLM, AI agents, RAG, multi-tenant SaaS, software architecture, Yunseop Im">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+         line-height:1.7; color:#1a1a1a; max-width:780px; margin:0 auto; padding:48px 24px 80px; background:#fafafa; }
+  h1 { font-size:2em; letter-spacing:-0.02em; }
+  .meta { color:#888; font-size:0.88em; margin:8px 0 30px; }
+  .idx-row { display:flex; align-items:baseline; gap:14px; padding:16px 18px; margin-bottom:10px;
+             background:#fff; border:1px solid #e8e8e8; border-radius:10px; text-decoration:none; color:inherit; }
+  .idx-row:hover { border-color:#1565c0; }
+  .idx-row .d { font-size:0.78em; color:#999; font-family:ui-monospace,monospace; min-width:44px; }
+  .idx-row .t { font-size:0.98em; font-weight:600; color:#1a1a1a; }
+  .idx-row .t small { display:block; font-weight:400; color:#777; font-size:0.85em; margin-top:3px; line-height:1.5; }
+  .idx-row .arr { margin-left:auto; color:#bbb; }
+  a { color:#1565c0; }
+  .back { display:inline-block; margin-bottom:24px; font-size:0.88em; color:#666; }
+</style>
+</head>
+<body>
+<a class="back" href="/">← yunseop.im</a>
+<h1>Writing</h1>
+<p class="meta">Field guides and teardowns from production systems — LLM serving, retrieval, agents, and SaaS architecture.</p>
+
+<a class="idx-row" href="/writing/graphrag-plm.html"><span class="d">2026</span><span class="t">GraphRAG for engineering data<small>Why PLM documents (BOMs, revisions, ECOs, drawings) break naive RAG — and the knowledge-graph architecture that fixes multi-hop retrieval.</small></span><span class="arr">→</span></a>
+<a class="idx-row" href="/writing/onprem-llm.html"><span class="d">2026</span><span class="t">Running LLM inference on customer GPUs<small>A production field guide — vLLM vs SGLang internals, quantization, guided decoding, prefix caching, and when on-prem doesn't make sense.</small></span><span class="arr">→</span></a>
+<a class="idx-row" href="/writing/agents.html"><span class="d">2026</span><span class="t">Building an operating system for autonomous coding agents<small>devin-harness teardown — lifecycle hooks, deterministic guards, review gates, dispatch contracts, and why the harness matters more than the prompt.</small></span><span class="arr">→</span></a>
+<a class="idx-row" href="/writing/freightscaler.html"><span class="d">2026</span><span class="t">How I built a real-time freight risk SaaS<small>Solo-engineered multi-tenant SaaS teardown — AWS serverless, OR-Tools routing, idempotency, 24 ADRs, and honest gaps.</small></span><span class="arr">→</span></a>
+<a class="idx-row" href="/writing/tenant-rag.html"><span class="d">2026</span><span class="t">Per-tenant RAG isolation<small>Multi-tenant retrieval design — silo vs pool stores, metadata filters enforced server-side, quota and deletion boundaries.</small></span><span class="arr">→</span></a>
+<a class="idx-row" href="/writing/oss-stack.html"><span class="d">2026</span><span class="t">The production AI open-source stack<small>A field guide to the libraries and services that hold up in production — and the ones that don't.</small></span><span class="arr">→</span></a>
+
+</body>
+</html>
