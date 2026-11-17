@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>About — What I Build & Operate | Yunseop Im</title>
-<meta name="description" content="What Yunseop Im builds and operates: production AI systems end to end — on-prem LLM serving, multi-tenant retrieval, agent infrastructure, payment/billing systems, and full-stack SaaS. Currently a core engineer at an AI startup; previously ran an independent multi-tenant SaaS solo.">
+<meta name="description" content="What Yunseop Im builds and operates: production AI systems end to end — on-prem LLM serving, multi-tenant retrieval, agent infrastructure, real-time session runtimes, and full-stack SaaS. Currently a core engineer at an AI startup; previously ran an independent multi-tenant SaaS solo.">
 <meta name="keywords" content="Yunseop Im, software engineer, full-stack engineer, AI engineer, LLM serving, RAG, GraphRAG, multi-tenant SaaS, backend engineer, applied AI">
 <style>
   * { margin:0; padding:0; box-sizing:border-box; }
@@ -43,8 +43,8 @@ customer-owned GPUs</strong> — where the data legally can't leave the building
 so the model, retrieval stack, and quality gates are all operated in-house.</p>
 
 <p>Before that I designed, built, and operate a multi-tenant AI SaaS solo —
-real-time multimodal sessions, per-user knowledge stores, a payment ledger
-with idempotent billing webhooks, and usage metering. Before that, contract
+real-time multimodal sessions, per-tenant RAG isolation, multi-provider
+billing infrastructure, and usage metering on an edge runtime. Before that, contract
 work shipping applied-AI products: an LLM support system serving 5,000+
 members, and data pipelines that had to stay correct without manual oversight.</p>
 
@@ -70,9 +70,11 @@ the honest limits of each approach. GraphRAG teardown:
 <a href="/writing/graphrag-ecommerce.html">e-commerce catalogs</a> ·
 <a href="/writing/tenant-rag.html">multi-tenant isolation</a>.</div>
 
-<div class="cap"><b>Payments, billing &amp; SaaS operations.</b> Double-entry
-ledgers, idempotency keys, webhook reconciliation, quotas and entitlements —
-the unglamorous systems where correctness is the product.</div>
+<div class="cap"><b>Production SaaS &amp; real-time systems.</b> Edge runtime
+architecture (Cloudflare Workers + Durable Objects), split-agent session loops,
+multi-provider billing infrastructure, per-tenant isolation enforced
+server-side, and usage metering — the unglamorous systems where correctness
+is the product.</div>
 
 <div class="cap"><b>Full-stack software engineering.</b> React/TypeScript frontends,
 FastAPI/Node/Spring Boot backends, PostgreSQL/Redis/Kafka, AWS/GCP/Cloudflare,
@@ -80,9 +82,10 @@ Terraform and CI/CD — I've owned complete products alone, which means I know
 where the seams are.</div>
 
 <h2>How I work</h2>
-<p>I'm currently employed and open to <strong>contract and freelance
-engagements</strong> — async collaboration, written-first communication,
-remote across EU/US time zones. I care about systems that are correct under
+<p>I'm currently employed and open to <strong>full-time roles and contract/freelance
+engagements</strong> — including <strong>relocation to EU/US</strong> with visa
+sponsorship. Async collaboration, written-first communication, remote across
+EU/US time zones. I care about systems that are correct under
 failure, observable when they degrade, and honest about their limits — the
 same standard I hold my own writing to.</p>
 

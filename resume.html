@@ -4,8 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Yunseop Im — Core Software Engineer | Full-Stack Systems & Applied AI | Resume & Profile</title>
-<meta name="description" content="Yunseop Im — full-stack software engineer building production AI systems end to end: LLM serving on customer GPUs, multi-tenant RAG, agent harnesses, payment/billing infrastructure, and SaaS operations. M.S. Computer Science, Georgia Tech. Open to contract/freelance — EU/US.">
-<meta name="keywords" content="Yunseop Im, software engineer resume, full-stack engineer, backend engineer, AI engineer, applied AI, LLM engineer, RAG engineer, GraphRAG, LLM serving, vLLM, SGLang, on-prem LLM, multi-tenant SaaS, agentic AI, AI agents, payment systems, billing infrastructure, idempotency, Python, FastAPI, TypeScript, React, PostgreSQL, AWS, Georgia Tech, remote software engineer, contract software engineer, freelance engineer, core engineer, core software engineer, senior software engineer">
+<meta name="description" content="Yunseop Im — full-stack software engineer building production AI systems end to end: LLM serving on customer GPUs, multi-tenant RAG, agent harnesses, real-time agent systems, edge infrastructure, and multi-tenant SaaS operations. M.S. Computer Science, Georgia Tech. Open to relocation — EU/US (visa sponsorship welcome).">
+<meta name="keywords" content="Yunseop Im, software engineer resume, full-stack engineer, backend engineer, AI engineer, applied AI, LLM engineer, RAG engineer, GraphRAG, LLM serving, vLLM, SGLang, on-prem LLM, multi-tenant SaaS, agentic AI, AI agents, agent orchestration, distributed systems, edge computing, real-time systems, Python, FastAPI, TypeScript, React, PostgreSQL, AWS, Georgia Tech, remote software engineer, contract software engineer, freelance engineer, core engineer, core software engineer, senior software engineer">
 <style>
   * { margin:0; padding:0; box-sizing:border-box; }
   body { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
@@ -41,7 +41,7 @@
   <a href="https://signalgap9-del.github.io">signalgap9-del.github.io</a> ·
   <a href="https://signalgap9-del.github.io/about.html">about</a> ·
   <a href="mailto:signalgap9@gmail.com">signalgap9@gmail.com</a> ·
-  South Korea · open to contract / freelance — EU / US
+  South Korea · open to relocation — EU / US (visa sponsorship welcome) · contract/freelance OK
 </p>
 
 <p class="summary">
@@ -49,7 +49,7 @@ Full-stack software engineer building <b>production AI systems end to end</b> �
 interfaces, databases, infrastructure, and the model/serving layer in between. Currently a core engineer at an
 AI startup shipping an enterprise platform: retrieval over large document corpora, on-prem LLM serving on
 customer-owned GPUs, and citation-grounded generation. Previously ran an independent multi-tenant SaaS
-(LLM sessions, knowledge stores, payment ledger and billing) and shipped applied-AI products on contract.
+(real-time multimodal sessions, per-tenant RAG, edge runtime, multi-provider billing) and shipped applied-AI products on contract.
 3+ years across backend, frontend, data, and ML systems. M.S. Computer Science, Georgia Tech (AI
 specialization, expected 2027).
 </p>
@@ -58,7 +58,7 @@ specialization, expected 2027).
 <div class="skills-group"><b>AI / LLM systems:</b> LLM APIs &amp; multi-provider routing · agentic systems &amp; tool-calling · RAG / GraphRAG / hybrid retrieval + reranking · knowledge graphs · vector DBs (Qdrant, pgvector, SQLite) · multimodal pipelines · LLM evaluation &amp; observability (Ragas, Langfuse, golden-set regression) · guardrails &amp; structured output (guided decoding, JSON-schema constrained generation) · on-prem LLM serving (vLLM, SGLang, quantization, prefix caching) · MCP</div>
 <div class="skills-group"><b>Backend:</b> Python (FastAPI, asyncio) · TypeScript/Node.js · Java (Spring Boot) · REST · gRPC · WebSockets/SSE · PostgreSQL · Redis · Kafka · DynamoDB · serverless (Lambda)</div>
 <div class="skills-group"><b>Frontend:</b> React · TypeScript · Tailwind · TanStack Query · Zustand · real-time session UIs</div>
-<div class="skills-group"><b>Payments / billing / SaaS ops:</b> double-entry ledgers · idempotency keys · webhook reconciliation · usage metering &amp; quotas · multi-tenant isolation · entitlements · Stripe-class payment rails</div>
+<div class="skills-group"><b>Backend systems &amp; SaaS ops:</b> multi-tenant isolation · usage metering &amp; quotas · entitlements · webhook handling · idempotency keys · structured errors · session runtimes · edge compute (Durable Objects)</div>
 <div class="skills-group"><b>Infra &amp; ops:</b> Docker · Kubernetes · Terraform · AWS · GCP · CloudFront · Cloudflare Workers · CI/CD (GitHub Actions) · OpenTelemetry · Prometheus · Sentry · Trivy</div>
 <div class="skills-group"><b>Languages:</b> Python · TypeScript · JavaScript · Java · SQL</div>
 
@@ -79,11 +79,13 @@ specialization, expected 2027).
 <div class="item">
   <h3>LivePair — independent multi-tenant AI SaaS</h3>
   <p class="narrative">
-    Designed, built, and operate a live SaaS alone: real-time multimodal AI sessions, per-user knowledge
-    stores with tenant isolation enforced server-side, and a <b>payment ledger</b> — double-entry accounting,
-    idempotent webhook handling, usage metering, and quota enforcement across billing rails. Solo ownership of
-    product, architecture, frontend, backend, billing, and operations; 24 architecture decision records on the
-    public repo.
+    Designed, built, and operate a production SaaS alone: a real-time multimodal AI copilot — screen+audio
+    input → rolling-window video analysis + a tool-driving agent session (split-agent loop) — on an edge
+    runtime (Cloudflare Workers + Durable Objects, per-session WS/spend caps), with per-tenant RAG isolation,
+    a 12-tool MCP server (OpenAPI 3.1), multi-provider billing infrastructure (HMAC-verified webhooks,
+    idempotency keys, atomic credit ledger), and a usage_event → OpenMeter + BigQuery observability pipeline.
+    Solo ownership of product, architecture, frontend, backend, billing, and operations; cost engineering cut
+    session cost from $12 to $8/hour via provider routing; 24 architecture decision records on the public repo.
   </p>
 </div>
 
@@ -132,8 +134,8 @@ specialization, expected 2027).
   <div class="head"><h3>Founder / Engineer — LivePair (independent SaaS)</h3><span class="when">2026 — Present</span></div>
   <div class="sub">Independent · remote</div>
   <ul>
-    <li>Solo-built and operate a multi-tenant AI SaaS: real-time multimodal sessions, per-user RAG knowledge stores, usage metering, and payment/billing infrastructure</li>
-    <li>Designed tenant isolation at the request-builder layer, dual-ledger quota accounting, idempotent billing webhooks, and fail-closed promotion gates</li>
+    <li>Solo-built and operate a production multi-tenant AI SaaS: real-time multimodal copilot (split-agent loop — video model + tool-driving agent session), edge runtime on Cloudflare Workers + Durable Objects</li>
+    <li>Shipped per-tenant RAG isolation, 12-tool MCP server (OpenAPI 3.1), multi-provider billing infrastructure, usage metering, and a usage_event → OpenMeter + BigQuery pipeline; cut session cost $12→$8/hour via provider routing</li>
   </ul>
 </div>
 
