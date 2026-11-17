@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Architecting a Real-Time Multimodal Agent SaaS on the Edge | Yunseop Im</title>
+<meta name="description" content="Production architecture teardown of a real-time multimodal AI SaaS: Durable Object session state machines, persistent self-model cognition loops, AI Gateway routing, micro-USD atomic credit ledgers, OpenMeter CloudEvents + BigQuery metering, and cron payment reconciliation.">
+<meta name="keywords" content="AI architecture, multimodal agents, Cloudflare Durable Objects, AI Gateway, LLM routing, OpenMeter, BigQuery, LiteLLM pricing, idempotent webhooks, payment reconciliation, micro-USD ledger, TypeScript, Hono, Drizzle ORM">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+         line-height:1.75; color:#1a1a1a; max-width:780px; margin:0 auto; padding:48px 24px 80px; background:#fafafa; }
+  h1 { font-size:2em; letter-spacing:-0.02em; line-height:1.25; }
+  h2 { font-size:1.25em; margin:40px 0 12px; letter-spacing:-0.01em; }
+  h3 { font-size:1.05em; margin:24px 0 8px; }
+  .meta { color:#888; font-size:0.85em; margin:10px 0 26px; }
+  p, li { color:#333; font-size:0.95em; margin-bottom:10px; }
+  ul, ol { padding-left:24px; margin-bottom:14px; }
+  li { margin:6px 0; }
+  code { background:#eee; padding:1px 6px; border-radius:4px; font-size:0.86em; font-family:ui-monospace,Menlo,monospace; }
+  pre { background:#18181b; color:#e4e4e7; padding:16px 18px; border-radius:8px; overflow-x:auto; font-size:0.79em; line-height:1.55; margin:14px 0 18px; }
+  pre code { background:none; padding:0; color:inherit; font-size:inherit; }
+  a { color:#1565c0; }
+  .back { display:inline-block; margin-bottom:24px; font-size:0.88em; color:#666; }
+  .cta { margin-top:44px; padding:18px 22px; background:#fff; border:1px solid #e0e0e0; border-radius:10px; font-size:0.92em; }
+  table { border-collapse:collapse; width:100%; margin:16px 0; font-size:0.86em; background:#fff; }
+  th, td { border:1px solid #ddd; padding:8px 11px; text-align:left; vertical-align:top; }
+  th { background:#f2f2f2; font-weight:600; }
+  blockquote { border-left:3px solid #1565c0; padding:6px 0 6px 16px; color:#444; margin:16px 0; background:#fff; border-radius:0 6px 6px 0; }
+</style>
+</head>
+<body>
+<a class="back" href="/writing/">← All writing</a>
+<h1>Architecting a real-time multimodal agent SaaS: session state, provider routing, and micro-USD ledgers</h1>
+<p class="meta">Yunseop Im · Software Engineer, AI &amp; Backend Systems · M.S. CS, Georgia Tech</p>
+
+<p>Most "production AI agent" writeups stop at prompt chains and tool schemas. When you run a
+multi-tenant, real-time multimodal AI product solo — where live video segments stream in every
+five seconds, agents drive external tools over MCP, and users prepay in fiat, crypto, or agent
+wallets — the prompt is maybe 10% of the engineering surface.</p>
+
+<p>The other 90% is state authority, provider failure semantics, financial invariants, and catching
+gray failures before users do. This post tears down the actual backend and AI architecture of an
+independent multimodal copilot SaaS I designed, built, and operate in production (product name
+omitted under stealth framing).</p>
+
+<h2>1. System topology: separating perception, cognition, and SDK runtimes</h2>
+
+<p>A live multimodal session has two conflicting latency and reliability profiles: ingesting
+rolling audio/video windows (~5s WebM chunks, rolling 20s context) is high-bandwidth and
+stateless-friendly, while tool dispatch, belief tracking, and credit accounting require
+single-threaded state authority.</p>
+
+<pre><code>Browser / CLI / MCP Host
+   │
+   ├─ WebSocket + 5s A/V chunks ──► LiveSessionDO (1 Durable Object per live session)
+   │                                   ├─ schema-versioned state (v=2) + migrate()
+   │                                   ├─ alarm() hard expiry + early-teardown grant refund
+   │                                   └─ bounded in-DO usage ring (MAX_USAGE_EVENTS = 1,000)
+   │
+   ├─ Hono + zod-openapi (OpenAPI 3.1) on Cloudflare Workers
+   │    ├─ Agent loop: Appraisal ──► SelfModel (belief DAG) + GoalGraph (JSON in D1)
+   │    ├─ Provider layer ──► Cloudflare AI Gateway ──► Gemini / OpenAI
+   │    └─ SDK Sidecar Container ──► Vertex AI / PayPal Node SDKs (workerd bypass, REST fallback)
+   │
+   └─ Financial &amp; Telemetry Plane
+        ├─ D1 credit_balance + credit_transaction (integer micro-USD, atomic batch)
+        ├─ D1 usage_event (authoritative per-call cost via vendored LiteLLM rate table)
+        ├─ Async fan-out (ctx.waitUntil) ──► OpenMeter (CloudEvents 1.0) + BigQuery
+        └─ 15-min Cron Reconciler ──► lost-webhook recovery + Σ delta == balance audit</code></pre>
+
+<p>Two architectural boundaries paid for themselves immediately:</p>
+<ul>
+  <li><strong>Split-agent session loop:</strong> a perception model watches rolling screen/audio
+  windows while a separate agency session owns the MCP tool surface and persistent cognitive state.
+  A slow or failed tool call never stalls visual perception, and model routing can price the two
+  lanes independently — which is how per-session inference cost dropped from <strong>$12 to $8 per
+  session-hour</strong> without degrading responsiveness.</li>
+  <li><strong>Node SDK sidecar container:</strong> edge runtimes (<code>workerd</code>) reject
+  several official Node SDKs at startup (for example, proxy/auth dependencies throwing deploy
+  error <code>10021</code>). Instead of forking vendor SDKs, incompatible clients
+  (<code>google-auth-library</code>, Vertex AI, PayPal server SDK) run inside an isolated
+  sidecar container bound over Durable Objects, with a pure REST fallback if the container is cold
+  or unhealthy.</li>
+</ul>
+
+<h2>2. Stateful edge sessions: Durable Objects as lease authorities</h2>
+
+<p>In a prepaid real-time product, the client cannot be trusted to stop the meter. Every live
+session maps 1:1 to a Cloudflare Durable Object (<code>LiveSessionDO</code>) that enforces four
+server-side contracts:</p>
+
+<ol>
+  <li><strong>Prepaid draw + idempotent teardown refund:</strong> the API route debits the full
+  session block from a <code>live_session_grant</code> pool <em>before</em> the socket opens. If
+  the user ends a 60-minute session at minute 18, teardown returns 42 minutes via a deterministic
+  idempotency key (<code>restore_&lt;sessionId&gt;</code>) so duplicate close frames can never
+  double-refund.</li>
+  <li><strong><code>alarm()</code>-enforced expiry:</strong> if every browser tab crashes, the
+  DO's scheduled alarm fires at <code>expiresAt</code>, flushes final provider usage, and closes
+  the session without leaking compute.</li>
+  <li><strong>Eviction-safe state migrations:</strong> running DOs keep their code version,
+  but an evicted DO wakes up on <em>new</em> Worker code reading <em>old</em> persisted storage.
+  Every persisted blob carries <code>v: STATE_VERSION</code> and passes through an explicit
+  <code>migrate()</code> step on cold load.</li>
+  <li><strong>Storage and socket ceilings:</strong> Cloudflare DO values cap at 128 KiB. Storing
+  unbounded per-call usage inside the session state blob will eventually brick active sessions.
+  We cap in-blob records at <code>MAX_USAGE_EVENTS = 1_000</code> (~80 bytes/event) and cap
+  concurrent WebSockets at <code>MAX_SOCKETS = 8</code> so a reconnect storm or leaked bearer
+  token cannot pin hundreds of sockets on one actor.</li>
+</ol>
+
+<h2>3. Persistent agent cognition instead of prompt-stuffing</h2>
+
+<p>Appending raw transcripts until you hit the context window degrades both latency and reasoning
+consistency. Instead, each turn runs a two-stage cognition cycle whose entire state is plain JSON
+stored in a single D1 row per conversation:</p>
+
+<ol>
+  <li><strong>Appraisal pass:</strong> classifies the dominant new stimulus
+  (<code>question | redirect | challenge | feedback | failure | progress | silence</code>) and
+  scores continuous signals (<code>unexpectedness</code>, <code>urgency</code>,
+  <code>uncertainty</code>, <code>confirming_evidence</code>, <code>failing_evidence</code>).</li>
+  <li><strong>Structured state update:</strong> updates a <code>SelfModel</code> (explicit
+  <code>beliefs</code>, <code>assumptions</code>, and <code>strategies</code> with justification
+  links and confidence scores) alongside a dependency-ordered <code>GoalGraph</code>.</li>
+</ol>
+
+<p>Because structured-output calls occasionally truncate at <code>max_tokens</code> or emit raw
+control bytes inside strings, the provider layer never calls bare <code>JSON.parse</code> on model
+output. A deterministic recovery pass escapes raw control characters inside string literals, tracks
+the open brace/bracket stack, trims trailing commas or dangling keys, and closes truncated objects
+while recording a <code>repaired: string[]</code> audit trail.</p>
+
+<h2>4. Provider gateway &amp; typed error taxonomy</h2>
+
+<p>Multi-provider routing breaks down when every upstream HTTP failure is treated as "retry
+another model." A guardrail block retried three times just burns quota and triggers abuse flags.</p>
+
+<pre><code>export class ProviderError extends Error {
+  status: number;
+  fatal: boolean;
+  /** Provider-side content/guardrail refusal — never retry. */
+  blocked: boolean;
+}
+
+// Cloudflare AI Gateway guardrail codes: 2016 (prompt) / 2017 (response)
+const GATEWAY_BLOCK_CODES = new Set([2016, 2017]);
+const SAFETY_CODE_RE = /^(safety|prohibited_content|spii|blocklist|content_blocked)$/i;
+
+const isBlockedError = (status: number, body: any, message: string) =&gt; {
+  const code = body?.error?.code ?? body?.code;
+  if (GATEWAY_BLOCK_CODES.has(Number(code))) return true;
+  if (typeof code === "string" &amp;&amp; SAFETY_CODE_RE.test(code)) return true;
+  return status &gt;= 400 &amp;&amp; status &lt; 500 &amp;&amp; /\b(safety|blocked|prohibited)\b/i.test(message);
+};</code></pre>
+
+<ul>
+  <li><strong>Cloudflare AI Gateway</strong> sits in front of Gemini calls for centralized
+  request logging and per-user spend caps, while request bodies are constructed exclusively by
+  pure builder functions so field-name drift (<code>text</code> vs <code>input_text</code>) cannot
+  creep into call sites.</li>
+  <li><strong>Blocked vs. transient errors:</strong> <code>blocked = true</code> halts retries
+  immediately and increments a per-user KV abuse counter; transient 5xx/429 errors remain eligible
+  for fallback routing.</li>
+</ul>
+
+<h2>5. Financial correctness: two-table truth and lock-free atomic debits</h2>
+
+<p>Billing bugs in AI SaaS come from two mistakes: floating-point USD math, and conflating
+<em>what you charged the user</em> with <em>what upstream providers billed you</em>. We split them
+into two immutable D1 ledgers denominated in integer <strong>micro-USD</strong>
+(<code>1 USD = 1,000,000 micro</code>):</p>
+
+<table>
+<tr><th>Ledger table</th><th>Question it answers</th><th>Idempotency &amp; concurrency guarantee</th></tr>
+<tr><td><code>credit_transaction</code> + <code>credit_balance</code></td><td>What did we charge or grant the customer?</td><td><code>UNIQUE(referenceId)</code> + single-roundtrip 4-statement D1 batch with <code>NOT NULL</code> overdraft abort</td></tr>
+<tr><td><code>usage_event</code></td><td>What did upstream models actually consume?</td><td><code>UNIQUE(requestId)</code> + turn-scoped <code>TurnMeter</code> staging main and auxiliary calls</td></tr>
+</table>
+
+<h3>Closing the read-then-write balance race without distributed locks</h3>
+
+<p>SQLite/D1 executes a <code>db.batch([...])</code> atomically. Checking a user's balance in
+application code before debiting is vulnerable to concurrent requests overdrawing the account. We
+close that race inside the SQL update itself: when <code>preventNegative</code> is set, an
+overdraft evaluates to <code>NULL</code> on a <code>NOT NULL</code> column, aborting the entire
+four-statement batch (including the transaction row insert):</p>
+
+<pre><code>const [, , rows] = await db.batch([
+  db.insert(creditBalance)
+    .values({ userId, balanceMicro: 0, createdAt: now, updatedAt: now })
+    .onConflictDoNothing(),
+  db.insert(creditTransaction).values({
+    id: txId, userId, deltaMicro, balanceAfterMicro: 0,
+    type, referenceId: extra.referenceId ?? null, createdAt: now,
+  }),
+  db.update(creditBalance).set({
+    balanceMicro: extra.preventNegative
+      ? sql`CASE WHEN ${creditBalance.balanceMicro} + ${deltaMicro} &gt;= 0
+                 THEN ${creditBalance.balanceMicro} + ${deltaMicro}
+                 ELSE NULL END`
+      : sql`${creditBalance.balanceMicro} + ${deltaMicro}`,
+    updatedAt: now,
+  }).where(eq(creditBalance.userId, userId))
+    .returning({ balanceAfterMicro: creditBalance.balanceMicro }),
+  // 4th statement stamps the exact post-mutation balance onto credit_transaction
+]);</code></pre>
+
+<p>A duplicate webhook delivery hits <code>UNIQUE(referenceId)</code> on statement 2 and rolls back
+statement 3; a concurrent spend race hits <code>NOT NULL</code> on statement 3 and rolls back
+statement 2. Zero ghost transactions, zero negative balances.</p>
+
+<h2>6. Metering pipeline: TurnMeter → OpenMeter + BigQuery</h2>
+
+<p>A single user turn often triggers multiple billable operations: the primary model response,
+helper calls (compaction, captioning, judge), and flat per-request fees (search grounding). Passing
+a bare cost number by reference makes it easy to forget a helper call.</p>
+
+<p>Instead, we implement the LiteLLM <code>cost_calculator</code> pattern via a request-scoped
+<code>TurnMeter</code> object injected into every provider helper:</p>
+
+<ul>
+  <li><strong>Vendored rate table:</strong> token costs are computed from a version-stamped
+  provider rate table (<code>PRICING_VERSION</code>). If a model is missing from the table or an
+  upstream response omits token counts, <code>TurnMeter</code> still writes a
+  <code>usage_event</code> row with <code>priced = false</code> or <code>usageMissing = true</code>
+  so reconciliation flags the anomaly instead of silently charging $0.</li>
+  <li><strong>Auxiliary call deduplication:</strong> helper calls receive deterministic child keys
+  (<code>${requestId}:aux:${seq++}</code>) so retries never double-count sibling operations.</li>
+  <li><strong>Off-path CloudEvents export:</strong> D1 is the source of truth. Downstream analytics
+  fan out inside <code>ctx.waitUntil()</code> — never blocking user latency and never throwing into
+  the request path. OpenMeter receives <code>application/cloudevents-batch+json</code> events with
+  <code>id = requestId</code> (replay-safe) and strictly disjoint token buckets
+  (<code>input_text_uncached</code>, <code>input_text_cached</code>, <code>output_text</code>,
+  <code>thinking</code>) so cached prompts are never double-summed. BigQuery receives parallel
+  streaming rows for margin and cohort analysis.</li>
+</ul>
+
+<h2>7. Payment webhooks &amp; the 15-minute reconciliation engine</h2>
+
+<p>The product accepts fiat (PayPal), crypto invoices (NOWPayments, verified via HMAC-SHA512 over
+recursively key-sorted JSON), and programmatic agent payments (<code>x402</code> USDC top-ups
+paired with <code>SIWX</code> Sign-In-With-X per-call wallet debits).</p>
+
+<blockquote>
+Webhooks are a latency optimization; the reconciliation sweep is the correctness engine.
+</blockquote>
+
+<p>Every checkout writes a <code>pending</code> purchase row <em>before</em> redirecting the buyer.
+Two state-machine rules prevent classic webhook bugs:</p>
+
+<ol>
+  <li><strong>Payment capture ≠ entitlement grant:</strong> when a webhook reports upstream payment
+  completion, we transition the row to non-terminal <code>captured</code> — <em>not</em>
+  <code>finished</code> — until <code>fulfillPaidOrder()</code> commits the credit batch. If
+  fulfillment fails mid-flight, the row stays visible to the sweeper.</li>
+  <li><strong>Terminal refund-lane protection:</strong> states like <code>refund_requested</code>,
+  <code>refunded</code>, and <code>hold</code> are immune to late or replayed payment webhooks, so
+  a delayed IPN can never resurrect a refunded order or clobber its audit trail.</li>
+</ol>
+
+<p>Every 15 minutes, a scheduled Worker cron runs a <code>go-reconcile</code>-style sweep over
+non-terminal rows aged between <code>10 minutes</code> (giving normal webhooks time to land) and
+<code>7 days</code> (bounded batches of 25), queries upstream provider truth via official SDKs/REST,
+runs the exact same idempotent <code>fulfillPaidOrder()</code> path, and audits global ledger
+invariants (<code>Σ credit_transaction.deltaMicro == credit_balance</code>,
+<code>usedMinutes &lt;= grantedMinutes</code>), paging the operator via deduplicated SMS if any
+invariant drifts.</p>
+
+<h2>8. Gray failures and the 12-stage predeploy gate</h2>
+
+<p>The worst outage we suffered in production returned <code>HTTP 200</code> everywhere: an
+upstream cloud project deletion invalidated the OAuth client, breaking every new login while
+uptime monitors stayed green. That incident shaped two operational rules:</p>
+
+<ul>
+  <li><strong>Canaries over uptime pings:</strong> post-deploy synthetic probes test real
+  stranger-facing flows (such as probing the live OAuth authorize handshake), not just
+  <code>/api/health</code>. Silent <code>.catch(() =&gt; {})</code> blocks on money, auth, or alert
+  paths are banned by static check.</li>
+  <li><strong>12-stage predeploy gate (<code>predeploy.mjs</code>):</strong> standalone
+  <code>wrangler deploy</code> is forbidden. Both PR CI and production deploys must pass a 12-step
+  pipeline: diff scan for forbidden suppressions/secrets, D1 table &amp; Durable Object migration
+  monotonicity checks, catalog sync, UI route-wiring verification, typed LLM diff judgment,
+  <code>tsc --noEmit</code>, full SSR build, local Worker boot with D1 migrations applied, live
+  route smoke tests, headless DOM/visual render checks, and a sitemap-wide copy audit.</li>
+</ul>
+
+<h2>Honest trade-offs &amp; current limits</h2>
+
+<ul>
+  <li><strong>D1 single-primary write serialization:</strong> SQLite-on-the-edge makes atomic
+  batches trivial and cheap, but write throughput is bounded by a single primary database. High-rate
+  per-chunk telemetry must be aggregated inside the session's Durable Object and flushed at
+  teardown rather than written per frame.</li>
+  <li><strong>Dual runtime surface:</strong> maintaining a Node sidecar container alongside
+  <code>workerd</code> solves SDK incompatibility cleanly, but adds cold-start and health-probe
+  surface area that pure Worker code doesn't have.</li>
+  <li><strong>Solo-operator bus factor:</strong> automated reconciliation, kill switches
+  (<code>APP_KV</code> dynamic caps and session wind-down flags), and strict deploy gates substitute
+  for an ops team — they reduce operational pages near zero, but they don't replace multi-region
+  provider redundancy when an upstream multimodal model degrades globally.</li>
+</ul>
+
+<div class="cta">
+<strong>Related:</strong> <a href="/projects/ai-copilot-saas.html">Product case study</a> ·
+<a href="/writing/tenant-rag.html">Per-tenant RAG isolation</a> ·
+<a href="/writing/agents.html">Agent harness teardown (devin-harness)</a> ·
+<a href="/resume.html">Resume</a>
+</div>
+</body>
+</html>

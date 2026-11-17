@@ -68,9 +68,9 @@ backend, edge infrastructure, billing, and operations.</p>
 
 <h2>The unglamorous parts that matter</h2>
 <ul>
-  <li><strong>Billing correctness</strong> — multi-provider payments (LemonSqueezy,
-  NOWPayments crypto, x402 agent payments) behind signature-verified webhooks, idempotency keys on every
-  credit mutation, an atomic prepaid credit ledger, and per-session spend caps so one
+  <li><strong>Billing correctness</strong> — multi-provider payments (PayPal,
+  NOWPayments crypto, x402 USDC agent wallets) behind signature-verified webhooks, idempotency keys on every
+  credit mutation, an atomic integer micro-USD credit ledger, a 15-minute reconciliation sweep, and per-session spend caps so one
   runaway loop can't burn a user's balance.</li>
   <li><strong>Usage metering → observability</strong> — provider pricing vendored
   from LiteLLM's published rate table (the cost_calculator pattern) stages a
@@ -96,6 +96,7 @@ are written down in the repo's design docs, not hidden.</p>
 
 <div class="cta">
 <strong>Live product:</strong> in production (stealth) ·
+<a href="/writing/multimodal-agent-architecture.html">Full architecture teardown →</a> ·
 <a href="/">profile</a> ·
 <a href="https://www.linkedin.com/in/yunseop-i-207a7215a/">LinkedIn</a>
 </div>
