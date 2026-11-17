@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>About — What I Build & Operate | Yunseop Im</title>
+<meta name="description" content="What Yunseop Im builds and operates: production AI systems end to end — on-prem LLM serving, multi-tenant retrieval, agent infrastructure, payment/billing systems, and full-stack SaaS. Currently a core engineer at an AI startup; previously ran an independent multi-tenant SaaS solo.">
+<meta name="keywords" content="Yunseop Im, software engineer, full-stack engineer, AI engineer, LLM serving, RAG, GraphRAG, multi-tenant SaaS, backend engineer, applied AI">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+         line-height:1.75; color:#1a1a1a; max-width:780px; margin:0 auto; padding:48px 24px 80px; background:#fafafa; }
+  h1 { font-size:2em; letter-spacing:-0.02em; }
+  h2 { font-size:1.2em; margin:40px 0 12px; letter-spacing:-0.01em; }
+  .meta { color:#888; font-size:0.88em; margin:8px 0 30px; }
+  p, li { color:#333; font-size:0.95em; }
+  ul { padding-left:22px; }
+  li { margin:6px 0; }
+  code { background:#eee; padding:1px 6px; border-radius:4px; font-size:0.86em; font-family:ui-monospace,Menlo,monospace; }
+  a { color:#1565c0; }
+  .back { display:inline-block; margin-bottom:24px; font-size:0.88em; color:#666; }
+  .cta { margin-top:44px; padding:18px 22px; background:#fff; border:1px solid #e0e0e0; border-radius:10px; font-size:0.92em; }
+  .cap { background:#fff; border:1px solid #e8e8e8; border-radius:10px; padding:16px 20px; margin:10px 0; font-size:0.93em; }
+  .cap b { color:#1a1a1a; }
+</style>
+</head>
+<body>
+<a class="back" href="/">← yunseop.im</a>
+<h1>About</h1>
+<p class="meta">Software engineer — full-stack systems &amp; applied AI · South Korea · M.S. CS, Georgia Tech</p>
+
+<h2>What I do</h2>
+<p>I build production software end to end — backend services, frontend interfaces,
+databases, infrastructure, and the model/serving layer in between. Most of my
+work is AI systems, but the AI is one layer of a larger engineering problem:
+multi-tenant boundaries, payment correctness, retrieval quality, and the
+operational reality of keeping it all running.</p>
+
+<p>Currently I'm a core engineer at an AI startup, owning backend modules and
+the AI layer of an enterprise platform: retrieval over large document corpora
+with per-scope isolation, knowledge-graph grounding, and <strong>LLM serving on
+customer-owned GPUs</strong> — where the data legally can't leave the building,
+so the model, retrieval stack, and quality gates are all operated in-house.</p>
+
+<p>Before that I designed, built, and operate a multi-tenant AI SaaS solo —
+real-time multimodal sessions, per-user knowledge stores, a payment ledger
+with idempotent billing webhooks, and usage metering. Before that, contract
+work shipping applied-AI products: an LLM support system serving 5,000+
+members, and data pipelines that had to stay correct without manual oversight.</p>
+
+<h2>What I'm good at</h2>
+
+<div class="cap"><b>LLM infrastructure &amp; serving.</b> On-prem inference on
+customer GPUs — vLLM/SGLang, quantization, KV-cache and prefix-cache tuning,
+guided decoding for structured/cited output, golden-set regression testing.
+I write about this: <a href="/writing/onprem-llm.html">the on-prem serving
+field guide</a>.</div>
+
+<div class="cap"><b>Retrieval systems.</b> Hybrid sparse+dense retrieval with
+reranking, knowledge graphs, per-tenant isolation enforced server-side, and
+the honest limits of each approach. GraphRAG teardown:
+<a href="/writing/graphrag-ecommerce.html">e-commerce catalogs</a> ·
+<a href="/writing/tenant-rag.html">multi-tenant isolation</a>.</div>
+
+<div class="cap"><b>Agent systems.</b> I extracted and open-sourced
+<a href="https://github.com/signalgap9-del/devin-harness">devin-harness</a> —
+lifecycle hooks, deterministic guards, action ledgers, typed review gates —
+because in production, the harness around an agent determines whether it's
+safe to leave unsupervised. <a href="/writing/agents.html">Teardown</a>.</div>
+
+<div class="cap"><b>Payments, billing &amp; SaaS operations.</b> Double-entry
+ledgers, idempotency keys, webhook reconciliation, quotas and entitlements —
+the unglamorous systems where correctness is the product.</div>
+
+<div class="cap"><b>Full-stack ownership.</b> React/TypeScript frontends,
+FastAPI/Node/Spring Boot backends, PostgreSQL/Redis/Kafka, AWS/GCP/Cloudflare,
+Terraform and CI/CD — I've owned complete products alone, which means I know
+where the seams are.</div>
+
+<h2>How I work</h2>
+<p>I'm currently employed and open to <strong>contract and freelance
+engagements</strong> — async collaboration, written-first communication,
+remote across EU/US time zones. I care about systems that are correct under
+failure, observable when they degrade, and honest about their limits — the
+same standard I hold my own writing to.</p>
+
+<h2>Evidence</h2>
+<ul>
+  <li><a href="/resume.html">Resume</a> — full history, projects, education</li>
+  <li><a href="/writing/">Writing</a> — 7 field guides and teardowns</li>
+  <li><a href="https://github.com/signalgap9-del">GitHub</a> — graphrag-lab, devin-harness (MIT), peachtree-dispatch</li>
+  <li><a href="https://github.com/NVIDIA/NVSentinel/pull/1533">Merged PRs</a> — NVIDIA/NVSentinel</li>
+</ul>
+
+<div class="cta">
+<strong>Contact:</strong> <a href="mailto:signalgap9@gmail.com">signalgap9@gmail.com</a> ·
+<a href="https://www.linkedin.com/in/yunseop-i-207a7215a/">LinkedIn</a>
+</div>
+</body>
+</html>
