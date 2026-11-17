@@ -29,16 +29,16 @@
 <body>
 <a class="back" href="/projects/">← All projects</a>
 <h1>AI copilot SaaS — real-time multimodal assistant</h1>
-<p class="meta">Yunseop Im · 2025–2026 · independent product — live in production</p>
+<p class="meta">Yunseop Im · Sep 2026 – Present · independent product — live in production</p>
 <div class="tags">
   <span class="tag">TypeScript</span><span class="tag">Cloudflare Workers</span><span class="tag">Durable Objects</span>
   <span class="tag">multi-tenant SaaS</span><span class="tag">LLM</span><span class="tag">React</span><span class="tag">production</span>
 </div>
 
 <h2>The product</h2>
-<p>An independent AI startup I designed, built, and operate: a real-time copilot that watches your screen and talks back — live
+<p>An independent AI startup in production (stealth): a real-time copilot that watches your screen and talks back — live
 multimodal sessions where a model sees rolling video of what you're doing while an
-agent session owns the tools. I designed, built, and operate it solo: product,
+agent session owns the tools and maintains persistent cognitive state. I designed, built, and operate it solo across product,
 backend, edge infrastructure, billing, and operations.</p>
 
 <h2>Split-agent architecture</h2>
@@ -69,8 +69,8 @@ backend, edge infrastructure, billing, and operations.</p>
 <h2>The unglamorous parts that matter</h2>
 <ul>
   <li><strong>Billing correctness</strong> — multi-provider payments (LemonSqueezy,
-  Stripe, crypto/x402) behind HMAC-verified webhooks, idempotency keys on every
-  credit mutation, an atomic credit ledger, and per-session spend caps so one
+  NOWPayments crypto, x402 agent payments) behind signature-verified webhooks, idempotency keys on every
+  credit mutation, an atomic prepaid credit ledger, and per-session spend caps so one
   runaway loop can't burn a user's balance.</li>
   <li><strong>Usage metering → observability</strong> — provider pricing vendored
   from LiteLLM's published rate table (the cost_calculator pattern) stages a
