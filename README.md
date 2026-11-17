@@ -34,8 +34,7 @@ open-source stack underneath. Posts link to the code they describe.
 - Writing: [signalgap9-del.github.io/writing](https://signalgap9-del.github.io/writing/)
 - Resume: [signalgap9-del.github.io/resume.html](https://signalgap9-del.github.io/resume.html)
 
-Relocating to the Netherlands — backend, full-stack, and AI systems roles.
-Open to work in EU/US.
+Open to relocation — Netherlands, EU, UK, and US. Zoekjaar visa holder (NL: no sponsorship required, HSM-eligible).
 
 ---
 
