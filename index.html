@@ -93,6 +93,12 @@
   .idx-row:hover .arr { transform:translateX(4px); color:var(--accent); }
   .idx-row .tags { grid-column:2; display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
   .idx-row .tag { font-family:'IBM Plex Mono',monospace; font-size:0.65rem; letter-spacing:0.04em; color:var(--ink-faint); border:1px solid var(--line); border-radius:2px; padding:2px 7px; }
+  .idx-row .t a.ptitle { color:inherit; text-decoration:none; }
+  .idx-row .t a.ptitle:hover { color:var(--accent); }
+  .idx-row .arr { text-decoration:none; }
+  .idx-row .plinks { display:block; margin-top:10px; }
+  .idx-row .glink { font-family:'IBM Plex Mono',monospace; font-size:0.72rem; letter-spacing:0.03em; color:var(--accent); text-decoration:none; margin-right:18px; }
+  .idx-row .glink:hover { text-decoration:underline; }
 
   /* ---------- focus areas ---------- */
   .focus { display:grid; grid-template-columns:1fr 1fr; gap:1px; background:var(--line); border:1px solid var(--line); }
@@ -205,27 +211,38 @@
       <h2>Things I've built</h2>
       <p class="lede">Open-source projects and shipped products — each with a case study.</p>
       <div class="idx" style="margin-top:24px">
-        <a class="idx-row" href="/projects/graphrag-lab.html">
-          <span class="d">2026</span>
-          <span class="t">graphrag-lab<small>Knowledge-graph-grounded retrieval experiments — hybrid BM25 + graph expansion in pure Python stdlib, runnable with tests.</small>
-            <span class="tags"><span class="tag">Python</span><span class="tag">GraphRAG</span><span class="tag">BM25</span><span class="tag">SQLite</span></span>
-          </span>
-          <span class="arr">→</span>
-        </a>
-        <a class="idx-row" href="/projects/devin-harness.html">
-          <span class="d">2026</span>
-          <span class="t">devin-harness<small>Operating system for agentic repos — lifecycle hooks, deterministic guards, review gates, dispatch contract. MIT.</small>
-            <span class="tags"><span class="tag">AI agents</span><span class="tag">TypeScript</span><span class="tag">guardrails</span><span class="tag">open source</span></span>
-          </span>
-          <span class="arr">→</span>
-        </a>
-        <a class="idx-row" href="/projects/freightscaler.html">
+        <div class="idx-row">
           <span class="d">2025–26</span>
-          <span class="t">FreightScaler<small>Real-time freight risk intelligence SaaS — React/TS frontend, AWS serverless backend, OR-Tools optimization, 24 ADRs, live demo.</small>
-            <span class="tags"><span class="tag">React</span><span class="tag">AWS</span><span class="tag">Lambda</span><span class="tag">SaaS</span><span class="tag">Terraform</span></span>
+          <span class="t"><a class="ptitle" href="/projects/livepair.html">LivePair</a><small>Production multi-tenant real-time multimodal AI SaaS — split-agent loop, Cloudflare edge runtime, per-tenant isolation, usage metering &amp; billing. Live at livepairai.com.</small>
+            <span class="tags"><span class="tag">TypeScript</span><span class="tag">Cloudflare Workers</span><span class="tag">multi-tenant SaaS</span><span class="tag">LLM</span></span>
+            <span class="plinks"><a class="glink" href="https://livepairai.com">Live demo ↗</a></span>
           </span>
-          <span class="arr">→</span>
-        </a>
+          <a class="arr" href="/projects/livepair.html" aria-label="LivePair case study">→</a>
+        </div>
+        <div class="idx-row">
+          <span class="d">2026</span>
+          <span class="t"><a class="ptitle" href="/projects/graphrag-lab.html">graphrag-lab</a><small>Knowledge-graph-grounded retrieval experiments — hybrid BM25 + graph expansion in pure Python stdlib, runnable with tests.</small>
+            <span class="tags"><span class="tag">Python</span><span class="tag">GraphRAG</span><span class="tag">BM25</span><span class="tag">SQLite</span></span>
+            <span class="plinks"><a class="glink" href="https://github.com/signalgap9-del/graphrag-lab">GitHub ↗</a></span>
+          </span>
+          <a class="arr" href="/projects/graphrag-lab.html" aria-label="graphrag-lab case study">→</a>
+        </div>
+        <div class="idx-row">
+          <span class="d">2026</span>
+          <span class="t"><a class="ptitle" href="/projects/devin-harness.html">devin-harness</a><small>Operating system for agentic repos — lifecycle hooks, deterministic guards, review gates, dispatch contract. MIT.</small>
+            <span class="tags"><span class="tag">AI agents</span><span class="tag">TypeScript</span><span class="tag">guardrails</span><span class="tag">open source</span></span>
+            <span class="plinks"><a class="glink" href="https://github.com/signalgap9-del/devin-harness">GitHub ↗</a></span>
+          </span>
+          <a class="arr" href="/projects/devin-harness.html" aria-label="devin-harness case study">→</a>
+        </div>
+        <div class="idx-row">
+          <span class="d">2025–26</span>
+          <span class="t"><a class="ptitle" href="/projects/freightscaler.html">FreightScaler</a><small>Real-time freight risk intelligence SaaS — React/TS frontend, AWS serverless backend, OR-Tools optimization, 24 ADRs, live demo.</small>
+            <span class="tags"><span class="tag">React</span><span class="tag">AWS</span><span class="tag">Lambda</span><span class="tag">SaaS</span><span class="tag">Terraform</span></span>
+            <span class="plinks"><a class="glink" href="https://github.com/signalgap9-del/peachtree-dispatch">GitHub ↗</a></span>
+          </span>
+          <a class="arr" href="/projects/freightscaler.html" aria-label="FreightScaler case study">→</a>
+        </div>
       </div>
       <p style="margin-top:16px; font-size:0.85rem;"><a href="/projects/" style="color:var(--accent)">All project case studies →</a></p>
     </section>

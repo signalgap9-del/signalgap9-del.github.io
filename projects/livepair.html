@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LivePair — Real-Time Multimodal AI Copilot SaaS | Yunseop Im</title>
+<meta name="description" content="Case study: LivePair — a production multi-tenant real-time multimodal AI SaaS. Split-agent loop, Cloudflare edge runtime, per-tenant isolation, usage metering and billing. By Yunseop Im.">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+         line-height:1.75; color:#1a1a1a; max-width:780px; margin:0 auto; padding:48px 24px 80px; background:#fafafa; }
+  h1 { font-size:1.9em; letter-spacing:-0.02em; line-height:1.25; }
+  h2 { font-size:1.25em; margin:38px 0 12px; }
+  .meta { color:#888; font-size:0.85em; margin:10px 0 26px; }
+  .tags { margin:12px 0 26px; }
+  .tag { display:inline-block; background:#fff; border:1px solid #ddd; border-radius:6px;
+         padding:3px 10px; font-size:0.78em; color:#333; margin:0 5px 5px 0; }
+  p, li { color:#333; font-size:0.95em; }
+  ul, ol { padding-left:24px; }
+  li { margin:6px 0; }
+  code { background:#eee; padding:1px 6px; border-radius:4px; font-size:0.88em; font-family:ui-monospace,Menlo,monospace; }
+  pre { background:#1e1e1e; color:#d4d4d4; padding:16px 18px; border-radius:8px; overflow-x:auto; font-size:0.8em; margin:14px 0; }
+  pre code { background:none; padding:0; color:inherit; }
+  a { color:#1565c0; }
+  .back { display:inline-block; margin-bottom:24px; font-size:0.88em; color:#666; }
+  .cta { margin-top:40px; padding:18px 22px; background:#fff; border:1px solid #e0e0e0; border-radius:10px; font-size:0.92em; }
+</style>
+</head>
+<body>
+<a class="back" href="/projects/">← All projects</a>
+<h1>LivePair — real-time multimodal AI copilot</h1>
+<p class="meta">Yunseop Im · 2025–2026 · <a href="https://livepairai.com">livepairai.com</a> — live product</p>
+<div class="tags">
+  <span class="tag">TypeScript</span><span class="tag">Cloudflare Workers</span><span class="tag">Durable Objects</span>
+  <span class="tag">multi-tenant SaaS</span><span class="tag">LLM</span><span class="tag">React</span><span class="tag">production</span>
+</div>
+
+<h2>The product</h2>
+<p>LivePair is a real-time AI copilot that watches your screen and talks back — live
+multimodal sessions where a model sees rolling video of what you're doing while an
+agent session owns the tools. I designed, built, and operate it solo: product,
+backend, edge infrastructure, billing, and operations.</p>
+
+<h2>Split-agent architecture</h2>
+<p>The core design decision: <strong>separate perception from agency</strong>.</p>
+<ul>
+  <li><strong>Perception</strong> — a video model ingests rolling screen windows (~5s A/V
+  segments, rolling 4) and produces what the user is doing, live.</li>
+  <li><strong>Agency</strong> — an agent session owns the tool layer: a 12-tool MCP
+  server, an OpenAPI 3.1 surface, and a skill catalog injected per call (including
+  auto-routed sales modes).</li>
+  <li>The two run as separate sessions so each can be reasoned about, retried, and
+  priced independently — a failure in tool dispatch never corrupts what the model saw.</li>
+</ul>
+
+<h2>Edge runtime, multi-tenant by default</h2>
+<ul>
+  <li><strong>Cloudflare Workers + Durable Objects</strong> — session state lives in
+  DOs, giving each live session a single-threaded, strongly-consistent home without
+  standing up a stateful cluster.</li>
+  <li><strong>Per-user knowledge stores</strong> — every user's RAG corpus is a siloed
+  store mapped server-side (<code>user_id → store</code>); retrieval is always called
+  with tenant scope enforced in the request builder, never trusted from the client.
+  An unscoped knowledge attach is treated as a cross-tenant leak, not a bug.</li>
+  <li><strong>D1 + KV + R2</strong> for relational state, session caches, and media —
+  the whole product runs on the edge with no always-on server to babysit.</li>
+</ul>
+
+<h2>The unglamorous parts that matter</h2>
+<ul>
+  <li><strong>Billing correctness</strong> — multi-provider payments (LemonSqueezy,
+  Stripe, crypto/x402) behind HMAC-verified webhooks, idempotency keys on every
+  credit mutation, an atomic credit ledger, and per-session spend caps so one
+  runaway loop can't burn a user's balance.</li>
+  <li><strong>Usage metering → observability</strong> — every session emits
+  <code>usage_event</code> rows into OpenMeter + BigQuery: cost, latency, and
+  token spend per user per session, which is what made the $12→$8/session
+  optimization measurable instead of vibes.</li>
+  <li><strong>Deploy safety</strong> — a 12-step predeploy gate (diff scan for
+  forbidden patterns, prod-truth checks on D1 tables and Durable Object migration
+  monotonicity, typecheck, real <code>wrangler dev</code> boot of the built worker,
+  route smoke, visual and copy audits) that must pass before anything reaches
+  production — the same gate runs as a required PR check.</li>
+  <li><strong>Tests as contract</strong> — <code>npm test</code> (32 tests) +
+  <code>npm run check</code> gates provider API contracts against real calls;
+  assumptions about Gemini/OpenAI behavior are verified, not trusted.</li>
+</ul>
+
+<h2>Honest limitations</h2>
+<p>Solo-operated: there is no on-call rotation because there is no team. Provider
+concentration is real — the product is only as available as its model APIs. The
+per-user knowledge-store silo design has a documented Phase-2 path (pooled store +
+server-side metadata filters) for when user count outgrows per-user stores. These
+are written down in the repo's design docs, not hidden.</p>
+
+<div class="cta">
+<strong>Live product:</strong> <a href="https://livepairai.com">livepairai.com</a> ·
+<a href="/">profile</a> ·
+<a href="https://www.linkedin.com/in/yunseop-i-207a7215a/">LinkedIn</a>
+</div>
+</body>
+</html>
