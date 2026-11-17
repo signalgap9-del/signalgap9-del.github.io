@@ -1,51 +1,43 @@
-**Condition-Based Intelligence for Global Infrastructure**
+# signalgap9-del.github.io
 
-OpenGroundINTEL is an applied research initiative focused on detecting, analyzing, and quantifying real-world infrastructure disruptions using satellite imagery, mobility data, and network science.
+**Personal engineering portfolio** — projects, technical writing, and resume.
+Full-stack + AI systems.
 
----
-
-## 🌍 Mission
-
-Bridge the gap between breaking news and physical reality by building operational intelligence systems that identify disruption signals earlier and measure their systemic impact.
+Live: https://signalgap9-del.github.io
 
 ---
 
-## 🔬 Research Areas
+## What's inside
 
-- Maritime chokepoint risk  
-- Supply chain resilience  
-- Satellite-based monitoring  
-- Network cascade modeling  
-- Economic impact estimation  
+Static site — plain HTML/CSS/JS, no build step, served by GitHub Pages.
 
----
+| Path | Content |
+|---|---|
+| `/` | Profile overview — selected work, stack, writing index |
+| `/projects/` | Case studies — AI copilot SaaS, GraphRAG lab, FreightScaler, agent harness |
+| `/writing/` | Technical writing — agent systems, RAG isolation, on-prem LLM serving, OSS stack |
+| `/resume.html` | Engineering resume (web version) |
+| `/about.html` | Background and approach |
 
-## 🚀 Active Projects
+## Writing
 
-### Global Chokepoint Disruption Model
-A dynamic network framework that measures congestion buildup, spatial propagation, and recovery patterns across critical trade corridors.
+Deep-dive engineering notes on production AI systems: agent harnesses,
+per-tenant RAG isolation, on-prem LLM serving, usage metering, and the
+open-source stack underneath. Posts link to the code they describe.
 
-### Satellite + AIS Fusion Pipeline
-Integrating optical satellite imagery with vessel trajectory data to detect abnormal port accumulation.
+## Author
 
----
+**Yunseop Im** — software engineer, Georgia Tech MSCS (in progress)
 
-## 📄 Paper (Coming Soon)
+- GitHub: [github.com/signalgap9-del](https://github.com/signalgap9-del)
+- LinkedIn: [linkedin.com/in/yunseop-i-207a7215a](https://linkedin.com/in/yunseop-i-207a7215a)
+- Writing: [signalgap9-del.github.io/writing](https://signalgap9-del.github.io/writing/)
+- Resume: [signalgap9-del.github.io/resume.html](https://signalgap9-del.github.io/resume.html)
 
-Working paper targeting peer-reviewed journals.
-
-Preprint will be released here.
-
----
-
-## 💻 GitHub
-
-Main repositories:
+Relocating to the Netherlands — backend, full-stack, and AI systems roles.
+Open to work in EU/US.
 
 ---
 
----
-
-## 📫 Contact
-
-Research inquiries welcome.
+*Independent AI startup work is presented under a stealth framing — product
+names and domains are intentionally omitted.*
