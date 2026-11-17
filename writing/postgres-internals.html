@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PostgreSQL Internals for Production Multi-Tenant Systems | Yunseop Im</title>
+<meta name="description" content="Production guide to PostgreSQL internals for senior backend engineers: MVCC tuple visibility and vacuum bloat, SSI serialization anomalies (SQLSTATE 40001), lock contention and SKIP LOCKED queues, reading EXPLAIN (ANALYZE, BUFFERS), and Row-Level Security planner pitfalls.">
+<meta name="keywords" content="PostgreSQL internals, MVCC, vacuum bloat, Visibility Map, Heap Fetches, Serializable Snapshot Isolation, SQLSTATE 40001, write skew, FOR UPDATE SKIP LOCKED, EXPLAIN ANALYZE BUFFERS, Row Level Security performance, InitPlan, PgBouncer, partitioning, backend engineering">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+         line-height:1.75; color:#1a1a1a; max-width:780px; margin:0 auto; padding:48px 24px 80px; background:#fafafa; }
+  h1 { font-size:2em; letter-spacing:-0.02em; line-height:1.25; }
+  h2 { font-size:1.25em; margin:40px 0 12px; letter-spacing:-0.01em; }
+  h3 { font-size:1.05em; margin:24px 0 8px; }
+  .meta { color:#888; font-size:0.85em; margin:10px 0 26px; }
+  p, li { color:#333; font-size:0.95em; margin-bottom:10px; }
+  ul, ol { padding-left:24px; margin-bottom:14px; }
+  li { margin:6px 0; }
+  code { background:#eee; padding:1px 6px; border-radius:4px; font-size:0.86em; font-family:ui-monospace,Menlo,monospace; }
+  pre { background:#18181b; color:#e4e4e7; padding:16px 18px; border-radius:8px; overflow-x:auto; font-size:0.79em; line-height:1.55; margin:14px 0 18px; }
+  pre code { background:none; padding:0; color:inherit; font-size:inherit; }
+  a { color:#1565c0; }
+  .back { display:inline-block; margin-bottom:24px; font-size:0.88em; color:#666; }
+  .cta { margin-top:44px; padding:18px 22px; background:#fff; border:1px solid #e0e0e0; border-radius:10px; font-size:0.92em; }
+  table { border-collapse:collapse; width:100%; margin:16px 0; font-size:0.86em; background:#fff; }
+  th, td { border:1px solid #ddd; padding:8px 11px; text-align:left; vertical-align:top; }
+  th { background:#f2f2f2; font-weight:600; }
+  blockquote { border-left:3px solid #1565c0; padding:6px 0 6px 16px; color:#444; margin:16px 0; background:#fff; border-radius:0 6px 6px 0; }
+</style>
+</head>
+<body>
+<a class="back" href="/writing/">← All writing</a>
+<h1>PostgreSQL internals for multi-tenant backends: MVCC, serialization anomalies, locking, EXPLAIN BUFFERS, and RLS pitfalls</h1>
+<p class="meta">Yunseop Im · Software Engineer, Backend &amp; AI Systems · M.S. CS, Georgia Tech</p>
+
+<p>Most backend outages blamed on "database scale" happen well under a few thousand writes per
+second. They are almost never caused by PostgreSQL hitting hardware limits; they are caused by
+application engineers treating Postgres as an abstract relational store instead of an 8&nbsp;KB
+page-oriented MVCC storage engine with specific planner, lock, and visibility rules.</p>
+
+<p>This field guide covers the five PostgreSQL mechanics that repeatedly decide whether a
+multi-tenant SaaS or enterprise data platform stays fast and correct under load: storage and
+Visibility Map degradation, concurrency anomalies and Serializable Snapshot Isolation (SSI),
+row-lock granularity and queue contention, reading <code>EXPLAIN (ANALYZE, BUFFERS)</code>, and
+Row-Level Security (RLS) performance traps.</p>
+
+<h2>1. Storage engine &amp; MVCC: why "Index Only Scan" silently degrades</h2>
+
+<p>A PostgreSQL table is an unordered heap of 8&nbsp;KB pages. Every row version (tuple) carries
+transaction-visibility metadata in its 23-byte header — primarily <code>xmin</code> (the
+transaction ID that inserted this tuple version) and <code>xmax</code> (the transaction ID that
+updated or deleted it, or <code>0</code> if still live). Oversized attributes such as wide
+<code>JSONB</code> blobs or document text are compressed and sliced out-of-line via
+<strong>TOAST</strong> so sequential scans that omit those columns never pay their I/O cost.</p>
+
+<p>Because Postgres implements Multi-Version Concurrency Control (MVCC) by appending new tuple
+versions rather than overwriting in place:</p>
+<ul>
+  <li><code>DELETE</code> only stamps <code>xmax</code> on the existing tuple.</li>
+  <li><code>UPDATE</code> stamps <code>xmax</code> on the old tuple and inserts a brand-new tuple
+  version. Unless the new tuple fits on the same 8&nbsp;KB page and modifies zero indexed columns
+  (allowing a <strong>HOT — Heap-Only Tuple</strong> update, aided by setting
+  <code>fillfactor = 80..90</code>), <em>every</em> index on the table must also insert a new index
+  entry pointing to the new tuple's <code>ctid</code>.</li>
+</ul>
+
+<h3>The Visibility Map trap</h3>
+
+<p>B-tree index entries in PostgreSQL do <strong>not</strong> store <code>xmin</code>/<code>xmax</code>
+visibility metadata. When the planner chooses an <code>Index Only Scan</code> on a covering index,
+Postgres consults a compact bitmap called the <strong>Visibility Map (VM)</strong> — two bits per
+8&nbsp;KB heap page indicating whether <em>all</em> tuples on that page are visible to all current
+transactions.</p>
+
+<pre><code>-- Healthy table after VACUUM: VM bits are set, zero heap I/O
+Index Only Scan using orders_tenant_created_cov_idx on orders
+  (cost=0.42..8.84 rows=25 width=20) (actual time=0.028..0.041 rows=25 loops=1)
+  Index Cond: (tenant_id = '42'::uuid)
+  Heap Fetches: 0
+  Buffers: shared hit=4
+
+-- Same query on a write-heavy table while autovacuum lags:
+Index Only Scan using orders_tenant_created_cov_idx on orders
+  (cost=0.42..8.84 rows=25 width=20) (actual time=0.061..4.890 rows=25 loops=1)
+  Index Cond: (tenant_id = '42'::uuid)
+  Heap Fetches: 980
+  Buffers: shared hit=612 read=184</code></pre>
+
+<p>Why did latency jump 100× with the exact same query plan? Default
+<code>autovacuum_vacuum_scale_factor = 0.2</code> waits until <strong>20% of the table</strong> has
+changed before vacuuming. On a 50M-row events table, that means 10 million dead/updated tuples
+accumulate — clearing VM bits across thousands of pages — before autovacuum even starts. Every dirty
+VM bit forces <code>Index Only Scan</code> to drop down to the heap (<code>Heap Fetches</code>) to
+check tuple visibility.</p>
+
+<p><strong>Production rules:</strong></p>
+<ol>
+  <li>Tune hot append/update tables per-table: lower
+  <code>autovacuum_vacuum_scale_factor = 0.01</code> (or switch to a fixed
+  <code>autovacuum_vacuum_threshold = 50000</code>) and raise
+  <code>autovacuum_vacuum_cost_limit</code> so vacuum keeps the Visibility Map warm.</li>
+  <li>Enforce <code>idle_in_transaction_session_timeout</code> (for example, <code>15s–30s</code>).
+  Never hold a database transaction open across an external LLM or webhook HTTP call: a single
+  stalled snapshot pins <code>OldestXmin</code> cluster-wide, preventing <code>VACUUM</code> from
+  reclaiming dead tuples on <em>any</em> table in that database.</li>
+</ol>
+
+<h2>2. Transaction isolation anomalies &amp; Serializable Snapshot Isolation (SSI)</h2>
+
+<p>PostgreSQL implements three distinct isolation levels (<code>READ UNCOMMITTED</code> behaves
+identically to <code>READ COMMITTED</code>). Choosing between them requires knowing the exact
+concurrency anomalies each permits:</p>
+
+<table>
+<tr><th>Isolation level</th><th>Snapshot scope</th><th>Lost update</th><th>Write skew / phantom</th><th>Engine mechanism</th></tr>
+<tr><td><code>READ COMMITTED</code> (default)</td><td>New snapshot per <em>statement</em></td><td><strong>Possible</strong> unless atomic SQL or row lock</td><td><strong>Possible</strong></td><td>Waits on conflicting row write, then re-evaluates <code>WHERE</code> on the updated tuple</td></tr>
+<tr><td><code>REPEATABLE READ</code></td><td>Single snapshot at first query in tx</td><td><strong>Blocked</strong> (aborts second writer with <code>40001</code>)</td><td><strong>Possible</strong> (disjoint writes survive)</td><td>First-updater-wins row version check; no predicate locks</td></tr>
+<tr><td><code>SERIALIZABLE</code></td><td>Single snapshot + dependency tracking</td><td><strong>Blocked</strong> (<code>40001</code>)</td><td><strong>Blocked</strong> (<code>40001</code>)</td><td>SSI: non-blocking <code>SIRead</code> predicate locks detect <code>rw-antidependency</code> cycles</td></tr>
+</table>
+
+<h3>Pattern A: Lost update in Read Committed (credit ledgers &amp; quotas)</h3>
+
+<p>Under default <code>READ COMMITTED</code>, reading a tenant's credit balance in application code
+(<code>SELECT balance FROM wallet WHERE id = $1</code> → check <code>balance &gt;= 80</code> →
+<code>UPDATE wallet SET balance = balance - 80</code>) suffers a classic read-then-write race: two
+concurrent requests both read <code>100</code>, both pass the application check, and the second
+<code>UPDATE</code> waits for the first commit before applying <code>- 80</code> to the newly
+committed row — leaving the balance at <code>-60</code>.</p>
+
+<p>You do <strong>not</strong> need <code>SERIALIZABLE</code> for single-row invariants. Push the
+invariant into a single atomic predicate update so PostgreSQL re-evaluates the <code>WHERE</code>
+clause after acquiring the row lock:</p>
+
+<pre><code>UPDATE wallet
+   SET balance_micro = balance_micro - $2,
+       updated_at    = now()
+ WHERE user_id = $1
+   AND balance_micro &gt;= $2
+RETURNING balance_micro;
+-- 0 rows returned == insufficient funds; zero race window, zero explicit SELECT FOR UPDATE</code></pre>
+
+<h3>Pattern B: Write skew in Repeatable Read (multi-row invariants)</h3>
+
+<p>Suppose a manufacturing approval rule requires at least one lead engineer to remain active on an
+on-call rotation (<code>count(*) WHERE active = true &gt;= 1</code>), or a booking table forbids
+overlapping time windows when `EXCLUDE USING gist` cannot express a cross-table rule. Two
+concurrent transactions running at <code>REPEATABLE READ</code> both observe two active engineers
+(Alice and Bob); Transaction 1 sets <code>active = false</code> on Alice's row while Transaction 2
+sets <code>active = false</code> on Bob's row. Because they touch <em>different</em> rows,
+<code>REPEATABLE READ</code> commits both — violating the invariant with zero active engineers.</p>
+
+<p>Under <code>SERIALIZABLE</code>, PostgreSQL's <strong>Serializable Snapshot Isolation
+(SSI)</strong> places lightweight, non-blocking <code>SIRead</code> predicate locks in shared memory
+(promoted from tuple to page or relation granularity when
+<code>max_pred_locks_per_transaction</code> fills). When SSI detects a dangerous structure of two
+adjacent <code>rw-antidependency</code> edges, the first committer wins and the second receives
+<code>SQLSTATE 40001 (serialization_failure)</code>.</p>
+
+<blockquote>
+Rule from PostgreSQL §13.5: Any transaction running at <code>REPEATABLE READ</code> or
+<code>SERIALIZABLE</code> <strong>must</strong> be wrapped in a retry harness that replays the
+<em>entire</em> transaction decision logic (not just the failed SQL statement) on
+<code>SQLSTATE 40001</code> and <code>40P01</code> (deadlock).
+</blockquote>
+
+<h2>3. Locking granularity: <code>FOR NO KEY UPDATE</code>, <code>SKIP LOCKED</code>, and Advisory Locks</h2>
+
+<p>Heavy lock contention in PostgreSQL frequently comes from acquiring stronger locks than
+necessary:</p>
+
+<ul>
+  <li><strong><code>FOR UPDATE</code> vs. <code>FOR NO KEY UPDATE</code>:</strong> a plain
+  <code>SELECT ... FOR UPDATE</code> on a parent row (for example, <code>parts</code> or
+  <code>tenants</code>) blocks concurrent <code>INSERT</code>s into child tables referencing that
+  parent via foreign keys (which acquire <code>FOR KEY SHARE</code>). Whenever your transaction
+  will update non-key columns — status, counters, metadata — lock with
+  <code>FOR NO KEY UPDATE</code> instead so child inserts continue unblocked.</li>
+  <li><strong>Transactional work queues (<code>FOR UPDATE SKIP LOCKED</code>):</strong> polling a
+  queue table with plain <code>FOR UPDATE</code> serializes every worker behind the oldest
+  in-flight job. Adding <code>SKIP LOCKED</code> lets concurrent workers bypass locked rows
+  immediately in sub-millisecond time while preserving exact-once lease acquisition:</li>
+</ul>
+
+<pre><code>WITH claimed AS (
+  SELECT id
+    FROM outbox_jobs
+   WHERE status = 'pending'
+     AND run_after &lt;= now()
+   ORDER BY priority DESC, id ASC
+   LIMIT 10
+     FOR UPDATE SKIP LOCKED
+)
+UPDATE outbox_jobs j
+   SET status     = 'processing',
+       locked_at  = now(),
+       attempt    = j.attempt + 1
+  FROM claimed
+ WHERE j.id = claimed.id
+RETURNING j.*;</code></pre>
+
+<ul>
+  <li><strong>Transactional advisory locks (<code>pg_advisory_xact_lock(hashtext(...))</code>):</strong>
+  when serializing operations on a logical resource that does not yet have a database row (for
+  example, per-tenant webhook ingestion or on-prem BOM revision creation), use
+  <em>transaction-scoped</em> <code>pg_advisory_xact_lock</code> rather than session-scoped
+  <code>pg_advisory_lock</code>. Session-scoped advisory locks leaked into a PgBouncer
+  transaction-pooled connection remain held forever on that backend connection.</li>
+</ul>
+
+<h2>4. Reading <code>EXPLAIN (ANALYZE, BUFFERS)</code> like an operator</h2>
+
+<p>Never run bare <code>EXPLAIN ANALYZE</code> without <code>BUFFERS</code>. Wall-clock
+<code>actual time</code> fluctuates with OS page-cache warmth and noisy neighbors; buffer counts
+measure physical work.</p>
+
+<ol>
+  <li><strong>Estimated vs. actual row divergence (<code>rows=12</code> vs.
+  <code>actual rows=48,000</code>):</strong> when the planner underestimates cardinality by 100×,
+  it picks a <code>Nested Loop</code> (quadratic random index lookups) where it needed a
+  <code>Hash Join</code>. Common culprit in multi-tenant schemas: correlated columns such as
+  <code>(tenant_id, project_code)</code> where Postgres multiplies independent column selectivities.
+  Fix with multivariate statistics:
+  <code>CREATE STATISTICS st_tenant_proj (dependencies, ndistinct) ON tenant_id, project_code FROM documents; ANALYZE documents;</code></li>
+  <li><strong><code>Buffers: shared hit</code> vs. <code>read</code> vs. <code>temp written</code>:</strong>
+  each unit is an 8&nbsp;KB page. <code>temp read/written</code> means a <code>Sort</code> or
+  <code>HashAggregate</code> spilled to disk because <code>work_mem</code> (allocated <em>per plan
+  node per connection</em>) was too small. Instead of raising global <code>work_mem</code> (which
+  risks OOM under connection spikes), apply <code>SET LOCAL work_mem = '64MB'</code> inside known
+  analytical transactions.</li>
+  <li><strong>Composite index column order:</strong> place equality predicates first
+  (<code>tenant_id</code>, <code>status</code>), then the sort or range column
+  (<code>created_at DESC</code>), and attach display-only payload columns via
+  <code>INCLUDE (amount_micro, actor_id)</code> so they never bloat non-leaf B-tree pages.</li>
+  <li><strong>Specialized access methods:</strong> use <strong>GIN</strong> for array/ACL containment
+  (<code>WHERE acl_groups &amp;&amp; $1::text[]</code>) and <code>JSONB</code> containment
+  (<code>jsonb_path_ops</code> is ~2–3× smaller and faster than default <code>jsonb_ops</code> when
+  you only need <code>@&gt;</code>); use <strong>GiST / <code>pg_trgm</code></strong> for substring
+  part-number searches (<code>ILIKE '%6010%'</code>); use <strong>BRIN</strong> on append-only
+  timestamped audit logs where a 100&nbsp;KB summary index replaces a 10&nbsp;GB B-tree.</li>
+</ol>
+
+<h2>5. Multi-tenant isolation at scale: RLS planner traps &amp; partitioning</h2>
+
+<p>Relying solely on developers remembering <code>WHERE tenant_id = $1</code> on every SQL query is
+a cross-tenant data breach waiting to happen. PostgreSQL <strong>Row-Level Security (RLS)</strong>
+moves that boundary into the storage engine (always pair <code>ENABLE ROW LEVEL SECURITY</code>
+with <code>FORCE ROW LEVEL SECURITY</code> and ensure the application connects as a non-<code>BYPASSRLS</code>,
+non-table-owner role).</p>
+
+<h3>The two RLS performance cliffs</h3>
+
+<p>In production, naive RLS policies regularly turn 1&nbsp;ms lookups into multi-second sequential
+scans. Two rules prevent 95% of RLS regressions:</p>
+
+<ol>
+  <li><strong>Every composite index on an RLS-protected table must lead with the policy column
+  (<code>tenant_id</code>).</strong> RLS rewrites every query against the table to inject the policy
+  predicate. An existing index on <code>(created_at DESC)</code> forces Postgres to scan recent rows
+  across <em>all</em> tenants and discard 99.9% via <code>Filter: ... Rows Removed by Filter: 1999000</code>.
+  Leading with <code>(tenant_id, created_at DESC)</code> turns the policy into an
+  <code>Index Cond</code> touching single-digit buffers.</li>
+  <li><strong>Force <code>InitPlan</code> caching for non-trivial session/JWT helpers.</strong> If a
+  policy calls a custom SQL/PLpgSQL helper or parses JSON claims per row
+  (<code>USING (tenant_id = current_tenant_id())</code>), Postgres may evaluate that function once
+  <em>per candidate row</em> during a filter scan. Wrapping the right-hand side in an uncorrelated
+  scalar subquery — <code>USING (tenant_id = (SELECT current_tenant_id()))</code> — forces the
+  planner to hoist it into an <code>InitPlan</code> evaluated <strong>once per query</strong>
+  (<code>$0</code>) instead of millions of times. Note: for a direct
+  <code>current_setting('app.tenant_id')::uuid</code> against a leading <code>(tenant_id, ...)</code>
+  B-tree index, direct comparison already binds cleanly into <code>Index Cond</code>; test both
+  with <code>EXPLAIN (ANALYZE, BUFFERS)</code> on real tenant distributions (whale vs. small
+  tenants).</li>
+</ol>
+
+<h3>PgBouncer transaction pooling + RLS</h3>
+
+<p>PostgreSQL forks one OS process per client connection (~5–10&nbsp;MB RSS each plus snapshot
+scanning overhead), so production services sit behind <strong>PgBouncer in
+<code>transaction</code> pool mode</strong>. Never set tenant context with session-level
+<code>SET app.tenant_id = '...'</code> on a transaction-pooled connection — the next request borrowing
+that backend connection inherits the previous tenant's GUC! Always scope context strictly to the
+current transaction with <code>SET LOCAL</code>:</p>
+
+<pre><code>BEGIN;
+SELECT set_config('app.tenant_id', $1, true); -- third arg true == SET LOCAL (tx-scoped)
+-- All queries in this transaction execute under RLS for $1;
+-- COMMIT automatically resets app.tenant_id before PgBouncer reuses the socket.
+COMMIT;</code></pre>
+
+<h3>When to partition (and when not to)</h3>
+
+<p>Declarative partitioning is an operational lifecycle and working-set tool, not an automatic
+speedup:</p>
+<ul>
+  <li><strong>Time-range partitioning (<code>PARTITION BY RANGE (created_at)</code> via
+  <code>pg_partman</code>):</strong> ideal for append-heavy telemetry, audit trails, and usage
+  ledgers. Expiring 90-day data becomes an instant metadata operation
+  (<code>DROP TABLE events_2026_07</code>) instead of a multi-hour <code>DELETE</code> that
+  generates gigabytes of WAL and dead-tuple bloat.</li>
+  <li><strong>Hash partitioning by <code>tenant_id</code>:</strong> rarely worth the operational tax
+  until a single table's active B-tree indexes exceed RAM (<code>shared_buffers</code> + OS page
+  cache, typically 100&nbsp;GB+), because PostgreSQL enforces a hard constraint: <strong>every
+  <code>UNIQUE</code> or <code>PRIMARY KEY</code> constraint on a partitioned table must include the
+  partition key</strong>, and queries missing the partition key scan <em>every</em> partition.</li>
+</ul>
+
+<h2>Production diagnostic checklist</h2>
+
+<table>
+<tr><th>Symptom</th><th>First catalog / view to query</th><th>What you are looking for</th></tr>
+<tr><td>Sudden p99 spike, CPU normal</td><td><code>pg_stat_activity</code> + <code>pg_locks</code></td><td><code>wait_event_type = 'Lock'</code>; blocking PID sitting <code>idle in transaction</code> or DDL waiting behind a long reader (blocking all subsequent queries in the lock queue!)</td></tr>
+<tr><td>Gradual latency creep over weeks</td><td><code>pg_stat_user_tables</code></td><td>High <code>n_dead_tup</code>, stale <code>last_autovacuum</code>, rising <code>Heap Fetches</code> in <code>EXPLAIN BUFFERS</code></td></tr>
+<tr><td>Single endpoint regressed after data growth</td><td><code>pg_stat_statements</code> (sort by <code>total_exec_time</code> &amp; <code>shared_blks_read</code>)</td><td>Plan flip from <code>Index Scan</code> to <code>Seq Scan</code> or <code>Nested Loop</code> due to stale stats or skewed tenant ("whale tenant" problem)</td></tr>
+<tr><td>Write amplification / slow inserts</td><td><code>pg_stat_user_indexes</code></td><td><code>idx_scan = 0</code> unused indexes paying write + WAL + vacuum tax on every <code>UPDATE</code>; drop with <code>DROP INDEX CONCURRENTLY</code></td></tr>
+</table>
+
+<p><em>Bonus DDL rule that saves outages:</em> never run bare <code>ALTER TABLE ... ADD CONSTRAINT</code>
+or <code>CREATE INDEX</code> on a live table in production. Even a 200&nbsp;ms
+<code>ACCESS EXCLUSIVE</code> lock queues behind an active 10-second analytics query — and while it
+waits in the lock queue, <strong>every new <code>SELECT</code> and <code>INSERT</code> on that table
+queues behind the waiting DDL</strong>. Always set a defensive <code>SET lock_timeout = '2s'</code>
+on migrations, use <code>CREATE INDEX CONCURRENTLY</code>, and add foreign keys / check constraints
+as <code>NOT VALID</code> first followed by <code>VALIDATE CONSTRAINT</code>.</p>
+
+<div class="cta">
+<strong>Related:</strong> <a href="/writing/tenant-rag.html">Per-tenant RAG isolation</a> ·
+<a href="/writing/multimodal-agent-architecture.html">Multimodal agent SaaS architecture &amp; ledgers</a> ·
+<a href="/writing/freightscaler.html">FreightScaler architecture &amp; SQL tuning</a> ·
+<a href="/resume.html">Resume</a>
+</div>
+</body>
+</html>

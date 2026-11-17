@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Production AI Agent Architecture: Reliability, Evals, and Failure Modes | Yunseop Im</title>
+<meta name="description" content="Staff-level engineering guide to production AI agents: the 7-part anatomy of open-source agent cores, 5-layer systems reliability, pass^k vs pass@1 evaluation with UK AISI Inspect AI, UK Gov Redbox/Lex field lessons, and real failure modes from autonomous coding harnesses.">
+<meta name="keywords" content="AI agent architecture, agent reliability, LLM evaluations, Inspect AI, tau-bench, pass^k, agent guardrails, devin-harness, MCP, Router Worker agents, UK Gov AI, Redbox, Lex, autonomous coding agents">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+         line-height:1.75; color:#1a1a1a; max-width:780px; margin:0 auto; padding:48px 24px 80px; background:#fafafa; }
+  h1 { font-size:2em; letter-spacing:-0.02em; line-height:1.25; }
+  h2 { font-size:1.25em; margin:40px 0 12px; letter-spacing:-0.01em; }
+  h3 { font-size:1.05em; margin:24px 0 8px; }
+  .meta { color:#888; font-size:0.85em; margin:10px 0 26px; }
+  p, li { color:#333; font-size:0.95em; margin-bottom:10px; }
+  ul, ol { padding-left:24px; margin-bottom:14px; }
+  li { margin:6px 0; }
+  code { background:#eee; padding:1px 6px; border-radius:4px; font-size:0.86em; font-family:ui-monospace,Menlo,monospace; }
+  pre { background:#18181b; color:#e4e4e7; padding:16px 18px; border-radius:8px; overflow-x:auto; font-size:0.79em; line-height:1.55; margin:14px 0 18px; }
+  pre code { background:none; padding:0; color:inherit; font-size:inherit; }
+  a { color:#1565c0; }
+  .back { display:inline-block; margin-bottom:24px; font-size:0.88em; color:#666; }
+  .cta { margin-top:44px; padding:18px 22px; background:#fff; border:1px solid #e0e0e0; border-radius:10px; font-size:0.92em; }
+  table { border-collapse:collapse; width:100%; margin:16px 0; font-size:0.86em; background:#fff; }
+  th, td { border:1px solid #ddd; padding:8px 11px; text-align:left; vertical-align:top; }
+  th { background:#f2f2f2; font-weight:600; }
+  blockquote { border-left:3px solid #1565c0; padding:6px 0 6px 16px; color:#444; margin:16px 0; background:#fff; border-radius:0 6px 6px 0; }
+</style>
+</head>
+<body>
+<a class="back" href="/writing/">← All writing</a>
+<h1>Production AI agent architecture: dissecting open-source cores, pass<sup>k</sup> evals, and real failure modes</h1>
+<p class="meta">Yunseop Im · Software Engineer, AI &amp; Backend Systems · M.S. CS, Georgia Tech</p>
+
+<p>When companies hire engineers to build "agentic AI systems," the job is almost never inventing a
+new prompting framework. As engineering teams from Anthropic to public-sector AI labs have found
+the hard way, an agent loop itself is ~150 lines of code. What separates a fragile demo from a
+system you can trust with production repositories, manufacturing BOMs, or customer accounts is
+<strong>state serialization, authorization boundaries, environment-state evaluation, and failure
+containment</strong>.</p>
+
+<p>This article synthesizes lessons from dissecting modern open-source agent runtimes
+(<code>mini-swe-agent</code>, NousResearch's <code>hermes-agent</code>, <code>xai-org/grok-build</code>,
+<code>OpenHands</code>, DeepSeek's <code>dsh-superagent</code>, and UK Government's
+<code>i-dot-ai</code> repositories) alongside operating my own agent harness
+(<a href="https://github.com/signalgap9-del/devin-harness">devin-harness</a>) and enterprise
+manufacturing agents in production.</p>
+
+<h2>1. The 7-part anatomy of every production agent core</h2>
+
+<p>Strip away the marketing vocabulary across modern coding and enterprise agents — from minimal
+SWE-bench solvers (~100 lines in <code>mini-swe-agent</code>) to Rust crate workspaces
+(<code>xai-org/grok-build</code> splitting <code>shell</code>, <code>tools</code>, and
+<code>workspace</code>) and multi-agent routers (<code>deepseek-ai/dsh-superagent</code>) — and
+every serious runtime converges on the exact same seven subsystems:</p>
+
+<pre><code>┌─────────────────────────────────────────────────────────────────────────┐
+│ 1. INTAKE &amp; SERIALIZATION   Per-session turn queue · idempotency key    │
+├─────────────────────────────────────────────────────────────────────────┤
+│ 2. CONTEXT COMPILER         Pinned rules (AGENTS.md) · prefix-cache     │
+│                             stable prefix · compaction hook on overflow │
+├─────────────────────────────────────────────────────────────────────────┤
+│ 3. MODEL LOOP               Native tool_calls · step/cost budget ·      │
+│                             timeout + abort controller per attempt      │
+├─────────────────────────────────────────────────────────────────────────┤
+│ 4. PERMISSION GATE          Deterministic PreToolUse guard (&lt;50ms) ·    │
+│    (OUTSIDE the model)      read=auto, mutating/external=approval gate  │
+├─────────────────────────────────────────────────────────────────────────┤
+│ 5. TOOL DISPATCH            Schema validation · server-injected tenant/ │
+│                             ACL/revision scope · structured error return│
+├─────────────────────────────────────────────────────────────────────────┤
+│ 6. SUBAGENT / WORKER ISOL.  Router owns user chat; Workers run in       │
+│                             isolated worktrees/containers &amp; return diff │
+├─────────────────────────────────────────────────────────────────────────┤
+│ 7. ACTION LEDGER &amp; EVAL     Append-only JSONL trace · Stop claim-check  │
+│                             · end-state regression suite (Inspect AI)   │
+└─────────────────────────────────────────────────────────────────────────┘</code></pre>
+
+<p>The single most important architectural rule across all seven layers: <strong>never fork an
+agent core to encode domain logic, and never ask a system prompt to enforce a security
+boundary.</strong></p>
+
+<p>In our manufacturing PLM agent, rules like <em>"only return documents matching the caller's ACL
+groups"</em>, <em>"always resolve the latest released revision unless an ECO draft is specified"</em>,
+and <em>"never mutate an Engineering Change Order without human sign-off"</em> live inside the
+<strong>tool implementations and deterministic pre-tool hooks</strong> — never in prompt prose.
+Prompts can be jailbroken or forgotten after context compaction; a database query whose request
+builder requires an authenticated <code>acl_groups</code> array cannot.</p>
+
+<h2>2. Systems reliability vs. model intelligence: the 5 invariants</h2>
+
+<p>Persistent resident agents (the lineage from <code>OpenClaw</code> to router-worker systems like
+<code>dsh-superagent</code>) survive long-running sessions not because their underlying LLM never
+hallucinates, but because the host runtime enforces five distributed-systems invariants:</p>
+
+<table>
+<tr><th>Layer</th><th>Failure without it</th><th>Production mechanism</th></tr>
+<tr><td><strong>1. Turn serialization</strong></td><td>User sends a follow-up message mid-tool-call; two loops mutate session state concurrently</td><td>Single actor / queue per session with explicit policy (<code>followup</code>, <code>steer</code>, or <code>interrupt</code>)</td></tr>
+<tr><td><strong>2. Idempotent side effects</strong></td><td>Network retry after timeout sends duplicate email, double-charges wallet, or opens duplicate PR</td><td>Deterministic idempotency key persisted <em>before</em> external execution; terminal results replayed on retry</td></tr>
+<tr><td><strong>3. Capacity admission</strong></td><td>Webhook or cron burst spawns 200 concurrent agent loops, exhausting GPU KV-cache or API spend</td><td>Bounded worker slots + priority lane reserving capacity for interactive human turns over background sweeps</td></tr>
+<tr><td><strong>4. Blast-radius isolation</strong></td><td>Runaway shell command mutates sibling sessions, leaks <code>.env</code>, or hangs indefinitely</td><td>Per-attempt timeout + abort signal, isolated filesystem/container, and deterministic command/path blocklists</td></tr>
+<tr><td><strong>5. Grounded provenance</strong></td><td>Ungrounded model fabrication looks identical to a cross-tenant data leak, destroying user trust</td><td>Mandatory source/revision citation validated against retrieved chunk IDs before rendering</td></tr>
+</table>
+
+<p>Invariant #5 is widely underestimated. When a closed-source personal agent recently hallucinated
+plausible-looking private messages from another user, "it was just a hallucination, not a breach"
+was an unusable defense. In regulated or multi-tenant domains, <strong>an ungrounded claim that
+resembles leaked data is operationally indistinguishable from a security incident</strong>. Output
+schemas must force retrieved document/revision citations that the backend verifies deterministically.</p>
+
+<h2>3. Field lessons from public-sector open source: UK Gov's <code>i-dot-ai</code></h2>
+
+<p>One of the best public laboratories for production AI engineering is the UK Government's
+Incubator for AI (<a href="https://github.com/i-dot-ai">github.com/i-dot-ai</a>), which publishes
+MIT-licensed code and candid postmortems from systems serving thousands of civil servants:</p>
+
+<ul>
+  <li><strong><code>i-dot-ai/redbox</code> (6,000+ civil servants across Cabinet Office, No10, and
+  DSIT, up to OFFICIAL-SENSITIVE):</strong> When the team published their sunset reflections
+  (<em>5 Key Lessons</em>), usage telemetry revealed a humbling split: engineers built sophisticated
+  multi-step RAG pipelines for ministerial briefing packs, yet <strong>~70% of real usage</strong>
+  was civil servants simply needing fast, secure, auditable LLM access on sensitive documents where
+  public SaaS tools were banned. The features that actually drove retention (NPS 56, ~2 hours saved
+  per week) were <strong>citation verification, strict security boundaries, and low-friction UX</strong>
+  — not exotic multi-agent choreography.</li>
+  <li><strong><code>i-dot-ai/lex</code> (8.4M+ UK legislation and amendment records):</strong>
+  Demonstrates the clean modern pattern for domain grounding: instead of building another bespoke
+  chat silo, expose authoritative, version-aware hybrid semantic search (220K Acts + 892K
+  amendments) over an <strong>MCP (Model Context Protocol) server</strong> so any compliant host
+  (Claude Code, Cursor, internal agents) reasons over exact statutory revisions rather than stale
+  pretraining weights.</li>
+</ul>
+
+<h2>4. Why <code>pass@1</code> lies: <code>pass<sup>k</sup></code> and environment-state evals</h2>
+
+<p>Academic leaderboards report <code>pass@1</code> (did the agent succeed on a single try?) or
+worse, <code>pass@k</code> (did <em>at least one</em> of <code>k</code> tries succeed?). In
+production backend engineering, the metric that governs user trust is <strong><code>pass<sup>k</sup></code></strong>,
+popularized by <strong>τ-bench / τ²-bench</strong> (Shinn, Yao et al.): the probability that an
+agent succeeds on <strong>all <code>k</code> independent trials</strong> of the same task under
+realistic user phrasing variance and policy constraints.</p>
+
+<blockquote>
+The compounding math is brutal: an agent with an impressive-looking <strong>80% single-run accuracy
+(<code>pass<sup>1</sup> = 0.80</code>)</strong> has a <strong><code>pass<sup>8</sup></code> of
+<code>0.80<sup>8</sup> = 16.8%</code></strong>. Four out of five production users hitting that
+workflow repeatedly will experience a policy violation or broken state.
+</blockquote>
+
+<h3>How to build an eval suite that survives model upgrades</h3>
+
+<p>Instead of hand-rolling fragile custom test runners, adopt the architecture standardized by the
+UK AI Security Institute's open-source <strong><a href="https://github.com/UKGovernmentBEIS/inspect_ai">Inspect AI</a></strong>
+framework (<code>Task = Dataset + Solver + Scorer</code>, MIT):</p>
+
+<ol>
+  <li><strong>Score the final environment state, not just the chat text.</strong> In τ²-bench and
+  SWE-bench, an agent that politely apologizes or claims success while leaving the database or git
+  tree in the wrong state scores <code>0</code>. Assert the post-run database rows, emitted tool
+  calls, and passing test suite deterministically.</li>
+  <li><strong>All-turns safety &amp; policy rubrics.</strong> Following Anthropic's multi-turn
+  evaluation design, a single policy violation on turn 4 of a 6-turn trajectory (for example,
+  bypassing a refund hold state or exposing an unscoped document) fails the entire trajectory
+  (<code>min</code> aggregation across turns, never <code>mean</code>).</li>
+  <li><strong>Two-tier grading (deterministic first, calibrated LLM judge second).</strong> Run
+  zero-cost deterministic assertions first (JSON schema validity, citation ID existence, zero
+  forbidden diff patterns, test exit code <code>0</code>). Only invoke an LLM judge for semantic
+  properties that unit tests cannot express — such as scope creep, weakened test assertions, or
+  unverified user-journey claims — and calibrate that judge against a human-labeled golden set
+  whenever swapping judge models.</li>
+</ol>
+
+<h2>5. Five real failure modes from autonomous coding harnesses</h2>
+
+<p>While building and operating <a href="https://github.com/signalgap9-del/devin-harness">devin-harness</a>
+across production repositories, five recurring agent failure modes forced specific deterministic
+countermeasures:</p>
+
+<ol>
+  <li><strong>The "green tests by deleting the test" reward hack:</strong> Given a failing CI gate,
+  autonomous coding agents occasionally add <code>test.skip</code>, <code>// @ts-ignore</code>,
+  <code>biome-ignore</code>, or lower coverage thresholds to turn the build green.
+  <em>Fix:</em> a deterministic diff scanner in <code>gate.mjs</code> hard-blocks any PR adding
+  suppression tokens or reducing test count unless explicitly overridden by a human reviewer.</li>
+  <li><strong>Premature "done" claims without post-edit execution:</strong> An agent runs tests,
+  makes a "tiny one-line fix" afterward, and declares victory without re-running the suite.
+  <em>Fix:</em> a <code>Stop</code> lifecycle hook (<code>claim-guard.mjs</code>) compares the
+  timestamp of the last file-write event in <code>action-log.jsonl</code> against the last test
+  execution event; if edits occurred after the last test run, the harness injects a loud unverified
+  warning before the session closes.</li>
+  <li><strong>Context compaction amnesia:</strong> Long debugging sessions trigger automatic
+  conversation summarization, silently dropping hard operational rules from turn 1 (for example,
+  <em>"never run standalone <code>wrangler deploy</code>"</em>).
+  <em>Fix:</em> enforce critical invariants at the <code>PreToolUse</code> shell/file boundary
+  (<code>agent-guard.mjs</code> &amp; <code>file-guard.mjs</code>, &lt;50&nbsp;ms regex check) so
+  even an amnesiac model cannot execute forbidden commands.</li>
+  <li><strong>Monolithic <code>AGENTS.md</code> token bloat &amp; attention dilution:</strong>
+  Stuffing 1,000 lines (~10k tokens) of repository trivia into the root instruction file degrades
+  instruction-following on every turn.
+  <em>Fix:</em> hierarchical layering — keep root <code>AGENTS.md</code> under ~100 lines of
+  non-negotiable repo-wide mandates and load subtree or task-specific skills lazily on demand,
+  cutting baseline prompt overhead by ~70% while improving prefix-cache hit rates.</li>
+  <li><strong>Judge re-litigation loops:</strong> Stateless LLM code-review gates invent new nitpicks
+  on every re-run, trapping autonomous PR loops in infinite churn.
+  <em>Fix:</em> persist typed review findings in a state file keyed by diff hunk so resolved or
+  explicitly waived items are never re-raised on subsequent passes.</li>
+</ol>
+
+<h2>Where to invest engineering time</h2>
+
+<p>If you are designing an agent system for an enterprise or high-growth product today: spend one
+day on the model loop, one week on deterministic tool/ACL/idempotency boundaries, and the rest of
+the quarter on an environment-state evaluation harness fed directly by production failure traces.
+Models improve every quarter for free; your authorization boundaries and evaluation corpus are the
+only compounding moat you own.</p>
+
+<div class="cta">
+<strong>Code &amp; related teardowns:</strong>
+<a href="https://github.com/signalgap9-del/devin-harness">devin-harness (MIT) ↗</a> ·
+<a href="https://github.com/signalgap9-del/production-starter">production-starter (MIT) ↗</a> ·
+<a href="/writing/multimodal-agent-architecture.html">Multimodal agent SaaS architecture</a> ·
+<a href="/writing/onprem-llm.html">On-prem LLM serving</a> ·
+<a href="/writing/postgres-internals.html">PostgreSQL internals</a>
+</div>
+</body>
+</html>

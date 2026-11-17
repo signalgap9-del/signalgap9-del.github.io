@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>production-starter — Supply-Chain Hardened Service Template | Yunseop Im</title>
+<meta name="description" content="Case study: production-starter — drop-in GitHub service scaffolding with SHA-pinned Actions, SLSA build provenance, OpenSSF Scorecard, CodeQL, TruffleHog secret scanning, Playwright smoke E2E, UK GDS operating standards, and ADR workflows.">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+         line-height:1.75; color:#1a1a1a; max-width:780px; margin:0 auto; padding:48px 24px 80px; background:#fafafa; }
+  h1 { font-size:1.9em; letter-spacing:-0.02em; line-height:1.25; }
+  h2 { font-size:1.25em; margin:38px 0 12px; }
+  .meta { color:#888; font-size:0.85em; margin:10px 0 26px; }
+  .tags { margin:12px 0 26px; }
+  .tag { display:inline-block; background:#fff; border:1px solid #ddd; border-radius:6px;
+         padding:3px 10px; font-size:0.78em; color:#333; margin:0 5px 5px 0; }
+  p, li { color:#333; font-size:0.95em; }
+  ul, ol { padding-left:24px; }
+  li { margin:6px 0; }
+  code { background:#eee; padding:1px 6px; border-radius:4px; font-size:0.88em; font-family:ui-monospace,Menlo,monospace; }
+  a { color:#1565c0; }
+  .back { display:inline-block; margin-bottom:24px; font-size:0.88em; color:#666; }
+  .cta { margin-top:40px; padding:18px 22px; background:#fff; border:1px solid #e0e0e0; border-radius:10px; font-size:0.92em; }
+</style>
+</head>
+<body>
+<a class="back" href="/projects/">← All projects</a>
+<h1>production-starter — supply-chain hardened service scaffolding</h1>
+<p class="meta">Yunseop Im · 2026 · open-source GitHub template (MIT)</p>
+<div class="tags">
+  <span class="tag">GitHub Actions</span><span class="tag">SLSA provenance</span><span class="tag">OpenSSF Scorecard</span>
+  <span class="tag">CodeQL</span><span class="tag">TruffleHog</span><span class="tag">Playwright E2E</span><span class="tag">SRE / ADR</span>
+</div>
+
+<h2>Why it exists</h2>
+<p>Every new backend or AI service needs the same unglamorous day-one baseline before touching real
+traffic: supply-chain pinned CI, secret scanning, static security analysis, user-journey smoke E2E,
+auditable artifact promotion, and architecture decision records. Teams either skip half of it under
+deadline pressure or copy brittle unhardened YAML from blog posts.</p>
+
+<p><code>production-starter</code> packages those controls into a single, opinionated GitHub
+template assembled strictly from official upstream standards (GitHub Security, OpenSSF, SLSA,
+Playwright, and UK Government GDS / Ministry of Justice operating handbooks).</p>
+
+<h2>What is inside</h2>
+<ul>
+  <li><strong>Supply-chain hardened CI workflows:</strong> every third-party GitHub Action is pinned
+  to a full 40-char commit SHA from a vetted release (&ge;7-day Dependabot cooldown), running with
+  <code>persist-credentials: false</code>, least-privilege job <code>permissions:</code>, and
+  explicit timeouts.</li>
+  <li><strong>Security &amp; provenance gates:</strong> CodeQL static analysis (JS/TS + GitHub
+  Actions workflows), OpenSSF Scorecard SARIF grading, dependency vulnerability review blocking
+  high-severity introductions on PRs, TruffleHog diff secret scanning, and
+  <code>actions/attest-build-provenance</code> (SLSA) signing build artifacts promoted once across
+  <code>staging &rarr; production</code>.</li>
+  <li><strong>Stranger-journey E2E + autonomous agent guardrails:</strong> Playwright smoke config
+  that verifies a real signed-out user render (not just a 200 health ping), paired with
+  <code>.devin/config.json</code> and <code>AGENTS.md</code> rules denying destructive git/deploy
+  commands without human approval.</li>
+  <li><strong>Operational &amp; architectural memory:</strong> Nygard ADR templates
+  (<code>docs/adr/</code>), AI-native spec-first <code>intent/</code> templates,
+  <code>release-please</code> Conventional Commit automation, and curated runbook references based
+  on UK GOV.UK (<em>The GDS Way</em>) and Ministry of Justice platform alerting standards.</li>
+</ul>
+
+<div class="cta">
+<strong>Repository:</strong> <a href="https://github.com/signalgap9-del/production-starter">github.com/signalgap9-del/production-starter ↗</a> ·
+<a href="https://github.com/signalgap9-del/devin-harness">devin-harness ↗</a> ·
+<a href="/writing/agent-architecture-evals.html">Agent architecture &amp; evals teardown →</a>
+</div>
+</body>
+</html>
