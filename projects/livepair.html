@@ -72,10 +72,11 @@ backend, edge infrastructure, billing, and operations.</p>
   Stripe, crypto/x402) behind HMAC-verified webhooks, idempotency keys on every
   credit mutation, an atomic credit ledger, and per-session spend caps so one
   runaway loop can't burn a user's balance.</li>
-  <li><strong>Usage metering → observability</strong> — every session emits
-  <code>usage_event</code> rows into OpenMeter + BigQuery: cost, latency, and
-  token spend per user per session, which is what made the $12→$8/session
-  optimization measurable instead of vibes.</li>
+  <li><strong>Usage metering → observability</strong> — provider pricing vendored
+  from LiteLLM's published rate table (the cost_calculator pattern) stages a
+  <code>usage_event</code> row per call into OpenMeter + BigQuery: cost,
+  latency, and token spend per user per session — which is what made the
+  $12→$8/session optimization measurable instead of vibes.</li>
   <li><strong>Deploy safety</strong> — a 12-step predeploy gate (diff scan for
   forbidden patterns, prod-truth checks on D1 tables and Durable Object migration
   monotonicity, typecheck, real <code>wrangler dev</code> boot of the built worker,
