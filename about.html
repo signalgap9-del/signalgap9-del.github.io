@@ -3,9 +3,36 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>About — What I Build & Operate | Yunseop Im</title>
-<meta name="description" content="What Yunseop Im builds and operates: production AI systems end to end — on-prem LLM serving, multi-tenant retrieval, agent infrastructure, real-time session runtimes, and full-stack SaaS. Currently a core engineer at an AI startup; previously ran an independent multi-tenant SaaS solo.">
-<meta name="keywords" content="Yunseop Im, software engineer, full-stack engineer, AI engineer, LLM serving, RAG, GraphRAG, multi-tenant SaaS, backend engineer, applied AI">
+<title>About Yunseop Im | Full-Stack, Backend &amp; AI Agent Engineer (RAG, LLM Serving)</title>
+<meta name="description" content="About Yunseop Im: full-stack and backend engineer building production AI agents, RAG/GraphRAG retrieval, on-prem LLM serving (SGLang, vLLM), and multi-tenant SaaS systems. M.S. CS at Georgia Tech.">
+<link rel="canonical" href="https://signalgap9-del.github.io/about.html">
+<meta property="og:site_name" content="Yunseop Im">
+<meta property="og:url" content="https://signalgap9-del.github.io/about.html">
+<meta property="og:title" content="About Yunseop Im | Full-Stack, Backend &amp; AI Agent Engineer">
+<meta property="og:description" content="Production AI agents, hybrid RAG/GraphRAG retrieval, on-prem LLM serving on customer GPUs, and multi-tenant SaaS architecture.">
+<meta property="og:type" content="profile">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="About Yunseop Im | Full-Stack, Backend &amp; AI Agent Engineer">
+<meta name="twitter:description" content="Production AI agents, hybrid RAG/GraphRAG retrieval, on-prem LLM serving on customer GPUs, and multi-tenant SaaS architecture.">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "AboutPage",
+  "url": "https://signalgap9-del.github.io/about.html",
+  "name": "About Yunseop Im | Full-Stack, Backend & AI Agent Engineer",
+  "mainEntity": {
+    "@type": "Person",
+    "@id": "https://signalgap9-del.github.io/#person",
+    "name": "Yunseop Im",
+    "jobTitle": "Full-Stack & Backend Software Engineer (AI Agents, RAG & On-Prem LLM Serving)",
+    "url": "https://signalgap9-del.github.io/",
+    "sameAs": [
+      "https://github.com/signalgap9-del",
+      "https://www.linkedin.com/in/yunseop-i-207a7215a/"
+    ]
+  }
+}
+</script>
 <style>
   * { margin:0; padding:0; box-sizing:border-box; }
   body { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
@@ -25,77 +52,69 @@
 </style>
 </head>
 <body>
-<a class="back" href="/">← yunseop.im</a>
-<h1>About</h1>
-<p class="meta">Software engineer — full-stack systems &amp; applied AI · South Korea · M.S. CS, Georgia Tech</p>
+<a class="back" href="/">← Yunseop Im</a>
+<h1>About Yunseop Im</h1>
+<p class="meta">Full-stack &amp; backend engineer · AI agents, RAG/GraphRAG &amp; on-prem LLM serving · M.S. CS, Georgia Tech</p>
 
 <h2>What I do</h2>
-<p>I build production software end to end — backend services, frontend interfaces,
-databases, infrastructure, and the model/serving layer in between. Most of my
-work is AI systems, but the AI is one layer of a larger engineering problem:
-multi-tenant boundaries, payment correctness, retrieval quality, and the
-operational reality of keeping it all running.</p>
+<p>I build production software end to end: backend services, frontend interfaces,
+databases, infrastructure, and the AI agent and model-serving layers in between. Most of my
+work centers on AI systems where engineering guarantees matter as much as model quality:
+multi-tenant boundaries, payment correctness, citation-grounded retrieval, and
+keeping services observable in production.</p>
 
-<p>Currently I'm a core engineer at an AI startup, owning backend modules and
-the AI layer of an enterprise platform: retrieval over large document corpora
-with per-scope isolation, knowledge-graph grounding, and <strong>LLM serving on
-customer-owned GPUs</strong> — where the data legally can't leave the building,
-so the model, retrieval stack, and quality gates are all operated in-house.</p>
+<p>Currently I'm a core engineer at an enterprise AI startup, owning workflow backend modules and
+the AI agent layer of a manufacturing PLM platform: hybrid retrieval over 20,000+ technical documents
+with per-scope isolation, knowledge-graph grounding, and <strong>on-prem LLM serving (SGLang) on
+customer-owned GPUs</strong> where engineering data cannot leave the site.</p>
 
-<p>Before that I designed, built, and operate a multi-tenant AI SaaS solo —
-real-time multimodal sessions, per-tenant RAG isolation, multi-provider
-billing infrastructure, and usage metering on an edge runtime. Before that, contract
-work shipping applied-AI products: an LLM support system serving 5,000+
-members, and data pipelines that had to stay correct without manual oversight.</p>
+<p>Alongside that, I built and operate a multi-tenant real-time multimodal AI agent SaaS on
+Cloudflare Workers and Durable Objects (MCP tool execution, per-tenant RAG isolation, idempotent multi-provider
+billing, and usage metering). Previously, I shipped an LLM customer-support system serving 5,000+
+members (cutting unsupported claims from 25% to 10% with an answer-verification layer) and automated ingestion pipelines.</p>
 
 <h2>What I'm good at</h2>
 
-<div class="cap"><b>Agent systems &amp; harness engineering.</b> I build the
-infrastructure that makes autonomous agents safe to run: lifecycle hooks,
+<div class="cap"><b>AI agents &amp; harness engineering.</b> I build the
+infrastructure that makes autonomous AI agents dependable: lifecycle hooks,
 deterministic guards that block dangerous actions before they execute, action
-ledgers for auditability, typed review gates, and dispatch contracts for
-agent-to-agent delegation. Extracted and open-sourced this as
+ledgers for auditability, typed review gates, MCP tool servers, and pass^k eval harnesses.
+Extracted and open-sourced as
 <a href="https://github.com/signalgap9-del/devin-harness">devin-harness</a> (MIT)
-— <a href="/writing/agents.html">full teardown</a>.</div>
+(<a href="/writing/agent-architecture-evals.html">architecture &amp; evals guide</a>).</div>
 
-<div class="cap"><b>LLM infrastructure &amp; serving.</b> On-prem inference on
-customer GPUs — vLLM/SGLang, quantization, KV-cache and prefix-cache tuning,
-guided decoding for structured/cited output, golden-set regression testing.
-I write about this: <a href="/writing/onprem-llm.html">the on-prem serving
-field guide</a>.</div>
+<div class="cap"><b>On-prem LLM serving &amp; inference.</b> Self-hosted inference on
+customer GPUs (SGLang, vLLM), quantization, KV-cache and prefix-cache tuning,
+guided JSON decoding for source-cited output, and golden-set regression testing.
+Field guide: <a href="/writing/onprem-llm.html">running LLM inference on customer GPUs</a>.</div>
 
-<div class="cap"><b>Retrieval systems.</b> Hybrid sparse+dense retrieval with
-reranking, knowledge graphs, per-tenant isolation enforced server-side, and
-the honest limits of each approach. GraphRAG teardown:
-<a href="/writing/graphrag-ecommerce.html">e-commerce catalogs</a> ·
-<a href="/writing/tenant-rag.html">multi-tenant isolation</a>.</div>
+<div class="cap"><b>RAG &amp; GraphRAG retrieval systems.</b> Hybrid sparse+dense retrieval with
+cross-encoder reranking, knowledge-graph expansion, server-enforced per-tenant isolation, and
+revision-scoped citations. Teardowns:
+<a href="/writing/graphrag-ecommerce.html">GraphRAG for e-commerce</a> ·
+<a href="/writing/tenant-rag.html">per-tenant RAG isolation</a>.</div>
 
-<div class="cap"><b>Production SaaS &amp; real-time systems.</b> Edge runtime
+<div class="cap"><b>Multi-tenant SaaS &amp; real-time backends.</b> Edge runtime
 architecture (Cloudflare Workers + Durable Objects), split-agent session loops,
-multi-provider billing infrastructure, per-tenant isolation enforced
-server-side, and usage metering — the unglamorous systems where correctness
-is the product.</div>
+idempotent multi-provider billing ledgers, PostgreSQL concurrency, and OpenMeter + BigQuery usage pipelines.</div>
 
 <div class="cap"><b>Full-stack software engineering.</b> React/TypeScript frontends,
-FastAPI/Node/Spring Boot backends, PostgreSQL/Redis/Kafka, AWS/GCP/Cloudflare,
-Terraform and CI/CD — I've owned complete products alone, which means I know
-where the seams are.</div>
+FastAPI/Node.js/Spring Boot backends, PostgreSQL/Redis/Kafka, AWS/GCP/Cloudflare,
+Terraform, and supply-chain hardened CI/CD (<a href="https://github.com/signalgap9-del/production-starter">production-starter</a>).</div>
 
 <h2>How I work</h2>
-<p>I'm currently employed and open to <strong>full-time roles</strong> across the
-<strong>Netherlands, EU, UK, and US</strong> (relocation ready). <strong>Zoekjaar visa holder</strong>
-(Netherlands: no sponsorship required, HSM-eligible); visa sponsorship welcome in EU/UK/US.
-Async collaboration, written-first communication, remote across
-EU/US time zones. I care about systems that are correct under
-failure, observable when they degrade, and honest about their limits — the
-same standard I hold my own writing to.</p>
+<p>I'm open to <strong>full-time roles</strong> across the
+<strong>Netherlands, EU, UK, and US</strong> (relocation ready). <strong>Dutch Zoekjaar visa holder</strong>
+(no sponsorship required in the Netherlands, HSM-eligible); visa sponsorship welcome in EU/UK/US.
+Written-first communicator, comfortable collaborating asynchronously across EU/US time zones,
+and happiest in teams that care about candid code reviews, clear specs, and systems that fail visibly rather than silently.</p>
 
 <h2>Evidence</h2>
 <ul>
-  <li><a href="/resume.html">Resume</a> — full history, projects, education</li>
-  <li><a href="/writing/">Writing</a> — 7 field guides and teardowns</li>
-  <li><a href="https://github.com/signalgap9-del">GitHub</a> — graphrag-lab, devin-harness (MIT), peachtree-dispatch</li>
-  <li><a href="https://github.com/NVIDIA/NVSentinel/pull/1533">Merged PRs</a> — NVIDIA/NVSentinel</li>
+  <li><a href="/resume.html">Resume</a>: full experience, projects, and education</li>
+  <li><a href="/writing/">Writing</a>: 10 production field guides and architecture teardowns</li>
+  <li><a href="https://github.com/signalgap9-del">GitHub</a>: devin-harness, production-starter, graphrag-lab, peachtree-dispatch</li>
+  <li><a href="https://github.com/NVIDIA/NVSentinel/pulls?q=is%3Apr+author%3Asignalgap9-del">Merged PRs</a>: NVIDIA/NVSentinel GPU health monitoring</li>
 </ul>
 
 <div class="cta">

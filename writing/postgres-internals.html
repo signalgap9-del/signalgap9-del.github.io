@@ -3,9 +3,26 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>PostgreSQL Internals for Production Multi-Tenant Systems | Yunseop Im</title>
+<title>PostgreSQL Internals for Production Multi-Tenant Backends | Yunseop Im</title>
 <meta name="description" content="Production guide to PostgreSQL internals for senior backend engineers: MVCC tuple visibility and vacuum bloat, SSI serialization anomalies (SQLSTATE 40001), lock contention and SKIP LOCKED queues, reading EXPLAIN (ANALYZE, BUFFERS), and Row-Level Security planner pitfalls.">
-<meta name="keywords" content="PostgreSQL internals, MVCC, vacuum bloat, Visibility Map, Heap Fetches, Serializable Snapshot Isolation, SQLSTATE 40001, write skew, FOR UPDATE SKIP LOCKED, EXPLAIN ANALYZE BUFFERS, Row Level Security performance, InitPlan, PgBouncer, partitioning, backend engineering">
+<link rel="canonical" href="https://signalgap9-del.github.io/writing/postgres-internals.html">
+<meta property="og:site_name" content="Yunseop Im">
+<meta property="og:url" content="https://signalgap9-del.github.io/writing/postgres-internals.html">
+<meta property="og:title" content="PostgreSQL Internals for Production Multi-Tenant Backends | Yunseop Im">
+<meta property="og:description" content="MVCC visibility map bloat, SSI serialization anomalies (40001), SKIP LOCKED queues, EXPLAIN BUFFERS, and RLS planner pitfalls.">
+<meta property="og:type" content="article">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "TechArticle",
+  "headline": "PostgreSQL Internals for Production Multi-Tenant Backends",
+  "description": "MVCC tuple visibility and vacuum bloat, SSI serialization anomalies (SQLSTATE 40001), lock contention and SKIP LOCKED queues, reading EXPLAIN (ANALYZE, BUFFERS), and Row-Level Security planner pitfalls.",
+  "url": "https://signalgap9-del.github.io/writing/postgres-internals.html",
+  "author": { "@id": "https://signalgap9-del.github.io/#person", "@type": "Person", "name": "Yunseop Im", "url": "https://signalgap9-del.github.io/" },
+  "about": ["PostgreSQL", "MVCC", "Serializable Snapshot Isolation", "Row-Level Security", "Multi-Tenant Backend"]
+}
+</script>
 <style>
   * { margin:0; padding:0; box-sizing:border-box; }
   body { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
