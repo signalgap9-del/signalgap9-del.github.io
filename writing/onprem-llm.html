@@ -3,9 +3,26 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Running LLM Inference on Customer GPUs — An On-Prem Serving Field Guide | Yunseop Im</title>
-<meta name="description" content="A production field guide to self-hosted LLM serving: vLLM vs SGLang internals (PagedAttention, RadixAttention, continuous batching), quantization trade-offs, guided decoding with xgrammar JSON schemas, prefix caching for RAG workloads, and the operational realities of running inference on hardware you didn't choose.">
-<meta name="keywords" content="on-prem LLM serving, self-hosted LLM, vLLM, SGLang, PagedAttention, RadixAttention, continuous batching, guided decoding, xgrammar, JSON schema constrained decoding, KV cache, AWQ FP8 quantization, prefix caching, LLM inference infrastructure, enterprise AI, air-gapped LLM">
+<title>Running LLM Inference on Customer GPUs: vLLM &amp; SGLang On-Prem Field Guide | Yunseop Im</title>
+<meta name="description" content="A production field guide to self-hosted LLM serving: vLLM vs SGLang internals (PagedAttention, RadixAttention, continuous batching), quantization trade-offs, guided decoding with xgrammar JSON schemas, prefix caching for RAG workloads, and operating inference on customer GPUs.">
+<link rel="canonical" href="https://signalgap9-del.github.io/writing/onprem-llm.html">
+<meta property="og:site_name" content="Yunseop Im">
+<meta property="og:url" content="https://signalgap9-del.github.io/writing/onprem-llm.html">
+<meta property="og:title" content="Running LLM Inference on Customer GPUs: vLLM &amp; SGLang On-Prem Field Guide | Yunseop Im">
+<meta property="og:description" content="vLLM vs SGLang internals, AWQ/FP8 quantization, guided JSON decoding, prefix caching for RAG, and running self-hosted LLMs on customer GPUs.">
+<meta property="og:type" content="article">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "TechArticle",
+  "headline": "Running LLM Inference on Customer GPUs: vLLM & SGLang On-Prem Field Guide",
+  "description": "vLLM vs SGLang internals (PagedAttention, RadixAttention, continuous batching), quantization trade-offs, guided decoding with JSON schemas, and prefix caching for RAG workloads.",
+  "url": "https://signalgap9-del.github.io/writing/onprem-llm.html",
+  "author": { "@id": "https://signalgap9-del.github.io/#person", "@type": "Person", "name": "Yunseop Im", "url": "https://signalgap9-del.github.io/" },
+  "about": ["On-Premise LLM Serving", "vLLM", "SGLang", "Guided Decoding", "GPU Inference"]
+}
+</script>
 <style>
   * { margin:0; padding:0; box-sizing:border-box; }
   body { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;

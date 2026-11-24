@@ -1,0 +1,31 @@
+# Yunseop Im
+
+> Full-stack and backend software engineer building production AI agents, hybrid RAG/GraphRAG pipelines, on-prem LLM serving (SGLang, vLLM) on customer GPUs, and multi-tenant SaaS backends. M.S. Computer Science (AI) at Georgia Tech. Open to relocation across the Netherlands (Dutch Zoekjaar visa holder, no sponsorship required, HSM-eligible), EU, UK, and US.
+
+- Email: signalgap9@gmail.com
+- GitHub: https://github.com/signalgap9-del
+- LinkedIn: https://www.linkedin.com/in/yunseop-i-207a7215a/
+- Resume: https://signalgap9-del.github.io/resume.html
+- About: https://signalgap9-del.github.io/about.html
+
+## Technical Writing
+
+- [PostgreSQL Internals for Production Multi-Tenant Backends](https://signalgap9-del.github.io/writing/postgres-internals.html): MVCC & Visibility Map bloat, SSI serialization anomalies (SQLSTATE 40001), SKIP LOCKED queues, EXPLAIN BUFFERS, and RLS planner pitfalls.
+- [Production AI Agent Architecture: Reliability, pass^k Evals & Failure Modes](https://signalgap9-del.github.io/writing/agent-architecture-evals.html): Open-source agent runtime anatomy, 5-layer systems reliability, Inspect AI pass^k evaluation, UK Gov Redbox/Lex lessons, and harness failure modes.
+- [Architecting a Real-Time Multimodal AI Agent SaaS on Cloudflare Edge](https://signalgap9-del.github.io/writing/multimodal-agent-architecture.html): Durable Object session leases, split-agent loops, AI Gateway routing, micro-USD atomic credit ledgers, and OpenMeter + BigQuery metering.
+- [Running LLM Inference on Customer GPUs (vLLM & SGLang)](https://signalgap9-del.github.io/writing/onprem-llm.html): PagedAttention vs RadixAttention, AWQ/FP8 quantization, guided JSON decoding, and prefix caching for enterprise RAG.
+- [GraphRAG for E-Commerce: Why Product Catalogs Break Naive RAG](https://signalgap9-del.github.io/writing/graphrag-ecommerce.html): Hybrid BM25 + knowledge-graph expansion for SKU compatibility and relational queries.
+- [Per-Tenant RAG Isolation in Multi-Tenant AI SaaS](https://signalgap9-del.github.io/writing/tenant-rag.html): Silo vs pool vector stores, server-enforced metadata filters, quota math, and GDPR deletion.
+- [Building an Operating System for Autonomous AI Coding Agents](https://signalgap9-del.github.io/writing/agents.html): Lifecycle hooks, deterministic exec/file guards, action ledgers, and typed review gates in devin-harness.
+- [On-Prem AI Is a Services Business](https://signalgap9-del.github.io/writing/onprem-ai-services.html): Operational realities of enterprise self-hosted LLM deployments.
+- [Building a Real-Time Freight Risk Intelligence SaaS](https://signalgap9-del.github.io/writing/freightscaler.html): AWS Lambda, DynamoDB, OR-Tools route optimization, multi-tenant quotas, idempotency, and 24 ADRs.
+- [The Production AI Open-Source Stack](https://signalgap9-del.github.io/writing/oss-stack.html): SGLang, vLLM, Langfuse, LangGraph, MCP, Qdrant, pgvector, Ragas, and LiteLLM in production.
+
+## Case Studies & Open Source
+
+- [Real-Time Multimodal AI Agent SaaS](https://signalgap9-del.github.io/projects/ai-copilot-saas.html)
+- [devin-harness (MIT)](https://signalgap9-del.github.io/projects/devin-harness.html) — https://github.com/signalgap9-del/devin-harness
+- [production-starter (MIT)](https://signalgap9-del.github.io/projects/production-starter.html) — https://github.com/signalgap9-del/production-starter
+- [graphrag-lab](https://signalgap9-del.github.io/projects/graphrag-lab.html) — https://github.com/signalgap9-del/graphrag-lab
+- [FreightScaler](https://signalgap9-del.github.io/projects/freightscaler.html) — https://github.com/signalgap9-del/peachtree-dispatch
+- [NVIDIA/NVSentinel Merged PRs](https://github.com/NVIDIA/NVSentinel/pulls?q=is%3Apr+author%3Asignalgap9-del)

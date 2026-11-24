@@ -3,9 +3,24 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Writing — Technical Articles | Yunseop Im</title>
-<meta name="description" content="Technical writing by Yunseop Im — field guides on on-prem LLM serving, GraphRAG for engineering data, autonomous agent harnesses, multi-tenant RAG isolation, SaaS architecture teardowns, and production AI stacks.">
-<meta name="keywords" content="technical writing, LLM serving, GraphRAG, PLM, AI agents, RAG, multi-tenant SaaS, software architecture, Yunseop Im">
+<title>Technical Writing: AI Agents, RAG, SGLang/vLLM &amp; PostgreSQL | Yunseop Im</title>
+<meta name="description" content="Production engineering articles by Yunseop Im on AI agent architecture and pass^k evals, on-prem LLM serving (SGLang, vLLM), GraphRAG, multi-tenant RAG isolation, PostgreSQL internals, and real-time multimodal SaaS.">
+<link rel="canonical" href="https://signalgap9-del.github.io/writing/">
+<meta property="og:site_name" content="Yunseop Im">
+<meta property="og:url" content="https://signalgap9-del.github.io/writing/">
+<meta property="og:title" content="Technical Writing: AI Agents, RAG, LLM Serving &amp; PostgreSQL | Yunseop Im">
+<meta property="og:description" content="Field guides and teardowns on AI agents, SGLang/vLLM serving, GraphRAG, multi-tenant RAG isolation, PostgreSQL internals, and edge SaaS.">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "CollectionPage",
+  "url": "https://signalgap9-del.github.io/writing/",
+  "name": "Technical Writing by Yunseop Im",
+  "author": { "@id": "https://signalgap9-del.github.io/#person", "@type": "Person", "name": "Yunseop Im" }
+}
+</script>
 <style>
   * { margin:0; padding:0; box-sizing:border-box; }
   body { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
@@ -33,9 +48,9 @@
 </style>
 </head>
 <body>
-<a class="back" href="/">← yunseop.im</a>
-<h1>Writing</h1>
-<p class="meta">Field guides and teardowns from production systems — LLM serving, retrieval, agents, PostgreSQL internals, and SaaS architecture.</p>
+<a class="back" href="/">← Yunseop Im</a>
+<h1>Technical Writing</h1>
+<p class="meta">Production field guides and architecture teardowns on AI agents, on-prem LLM serving (SGLang, vLLM), RAG/GraphRAG, PostgreSQL internals, and multi-tenant SaaS.</p>
 
 <div class="idx-row"><span class="d">2026</span><span class="t"><a class="ptitle" href="/writing/postgres-internals.html">PostgreSQL internals for multi-tenant backends</a><small>MVCC &amp; Visibility Map degradation, SSI serialization anomalies (SQLSTATE 40001), FOR NO KEY UPDATE &amp; SKIP LOCKED queues, EXPLAIN (ANALYZE, BUFFERS) diagnostics, and Row-Level Security planner traps.</small><span class="topics"><span class="ttag">PostgreSQL</span><span class="ttag">MVCC</span><span class="ttag">SSI / locking</span><span class="ttag">EXPLAIN BUFFERS</span><span class="ttag">RLS</span></span></span><a class="arr" href="/writing/postgres-internals.html" aria-label="PostgreSQL internals for multi-tenant backends">→</a></div>
 <div class="idx-row"><span class="d">2026</span><span class="t"><a class="ptitle" href="/writing/agent-architecture-evals.html">Production AI agent architecture: cores, pass^k evals, and failure modes</a><small>The 7-part anatomy of open-source agent runtimes, 5-layer systems reliability, UK Gov i.AI (Redbox/Lex) field lessons, pass^k vs pass@1 evaluation with Inspect AI, and real harness failure modes.</small><span class="topics"><span class="ttag">AI architecture</span><span class="ttag">agent evals</span><span class="ttag">Inspect AI</span><span class="ttag">pass^k</span><span class="ttag">guardrails</span></span><span class="repo"><a href="https://github.com/signalgap9-del/devin-harness">code: devin-harness ↗</a> · <a href="https://github.com/signalgap9-del/production-starter">code: production-starter ↗</a></span></span><a class="arr" href="/writing/agent-architecture-evals.html" aria-label="Production AI agent architecture">→</a></div>

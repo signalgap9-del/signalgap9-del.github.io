@@ -4,7 +4,25 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Per-Tenant RAG Isolation in Multi-Tenant AI SaaS | Yunseop Im</title>
-<meta name="description" content="How to design tenant-isolated RAG for a multi-tenant AI SaaS: per-user vector stores vs shared store with metadata filters, quota math, GDPR deletion, and the failure modes that leak data across tenants.">
+<meta name="description" content="How to design tenant-isolated RAG for a multi-tenant AI SaaS: per-user vector stores vs shared store with server-enforced metadata filters, quota math, GDPR deletion, and cross-tenant leak failure modes.">
+<link rel="canonical" href="https://signalgap9-del.github.io/writing/tenant-rag.html">
+<meta property="og:site_name" content="Yunseop Im">
+<meta property="og:url" content="https://signalgap9-del.github.io/writing/tenant-rag.html">
+<meta property="og:title" content="Per-Tenant RAG Isolation in Multi-Tenant AI SaaS | Yunseop Im">
+<meta property="og:description" content="Silo vs pool vector stores, server-enforced metadata filtering, quota math, and GDPR deletion in multi-tenant RAG.">
+<meta property="og:type" content="article">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "TechArticle",
+  "headline": "Per-Tenant RAG Isolation in Multi-Tenant AI SaaS",
+  "description": "Designing tenant-isolated RAG: per-user vector stores vs shared store with server-enforced metadata filters, quota math, and GDPR deletion.",
+  "url": "https://signalgap9-del.github.io/writing/tenant-rag.html",
+  "author": { "@id": "https://signalgap9-del.github.io/#person", "@type": "Person", "name": "Yunseop Im", "url": "https://signalgap9-del.github.io/" },
+  "about": ["Multi-Tenant RAG", "Tenant Isolation", "Vector Databases", "AI Security"]
+}
+</script>
 <style>
   * { margin:0; padding:0; box-sizing:border-box; }
   body { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
@@ -28,7 +46,7 @@
 </style>
 </head>
 <body>
-<a class="back" href="/">← yunseop.im</a>
+<a class="back" href="/writing/">← Writing</a>
 <h1>Per-tenant RAG isolation in multi-tenant AI SaaS</h1>
 <p class="meta">Yunseop Im · Software engineer, AI engineering · M.S. CS, Georgia Tech</p>
 
